@@ -341,10 +341,10 @@
       <p class="note-inline" style="margin-top:-2px;">Fill in the details below, then tap "Save as company" to remember this customer — selecting them here next time auto-fills everything.</p>
 
       <div class="grid" style="margin-top:14px;">
+        <div class="field"><label>Report Number</label><input type="text" id="f_reportNo" readonly></div>
         <div class="field"><label>Customer</label><input type="text" id="f_customer"></div>
         <div class="field"><label>Manufacturer</label><input type="text" id="f_manufacturer"></div>
         <div class="field"><label>Identification No.</label><input type="text" id="f_idno"></div>
-        <div class="field"><label>Report Number</label><input type="text" id="f_reportno" placeholder="KE-2026-0001"></div>
         <div class="field"><label>Crane number</label><input type="text" id="f_number"></div>
         <div class="field"><label>Hoist WLL</label><input type="text" id="f_wll"></div>
         <div class="field"><label>Falls</label><input type="text" id="f_falls"></div>
@@ -496,6 +496,8 @@
         <p class="note-inline">With OneDrive sync switched on (top of the page) reports arrive on their own. Otherwise, they're saved on the phone they were written on: on each engineer's phone, open this section, pick the week and tap Export, then send the file over. On this device, tap Add reports and choose the file(s) — the full reports are merged in (they'll show up in Saved Reports too, not just the list below), minus photos and signatures to keep the file small.</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
           <button class="btn-ghost" id="wkExport" type="button">📤 Export this week's reports</button>
+          <button class="btn-ghost" id="wkExportAll" type="button">📤 Export all saved reports</button>
+          <button class="btn-ghost" id="wkExportCurrent" type="button">📄 Export current report</button>
           <button class="btn-ghost" id="wkImportBtn" type="button">📥 Add reports…</button>
           <button class="btn-ghost" id="wkClearImported" type="button" style="display:none;">Clear added reports</button>
         </div>
@@ -513,7 +515,8 @@
   <button class="action-btn yellow" id="btnComplete" type="button">✅ Complete &amp; start new</button>
   <button class="action-btn outline" id="btnPrint" type="button">🖨️ Print</button>
   <button class="action-btn outline" id="btnQrLabel" type="button">🏷️ Print QR Label</button>
-  <button class="action-btn outline" id="btnPdf" type="button">📄 Download PDF</button>
+  <button class="action-btn outline" id="btnPdf" type="button">📄 Download / Export PDF</button>
+  <button class="action-btn outline" id="btnExportReport" type="button">📤 Export report file</button>
   <button class="action-btn outline" id="btnLoler" type="button" style="display:none; border-color:var(--serv); color:var(--serv);">📋 Download LOLER Report</button>
   <button class="action-btn yellow" id="btnEmail" type="button">✉️ Email customer</button>
   <button class="action-btn outline" id="btnCopyText" type="button">📋 Copy report text</button>
@@ -651,12 +654,13 @@ let ITEM_IDS = [];
 
 // ---------- state ----------
 let state = {
-  reportNo:'', customer:'', manufacturer:'', idno:'', number:'', wll:'', falls:'', email:'', customerpin:'',
+  customer:'', manufacturer:'', idno:'', number:'', wll:'', falls:'', email:'', customerpin:'', reportNo:'', _reportId:'',
   date: new Date().toISOString().slice(0,10),
   engineer:'', visitType:'Service', notes:'',
   loler:{location:'', makeserial:'', swl:'', description:'', prevexam:'', nextexam:'', ourref:'', extraA:'', extraB:'', extraC:'', signname:'', signature:null, equipmentType:'CRANE'},
   items:{} // id -> {status, note}
 };
+
 // ---------- render legend ----------
 const legendEl = document.getElementById('legend');
 function serviceStatusLabel(){
@@ -873,7 +877,7 @@ function renderFindings(){
 renderFindings();
 
 // ---------- field bindings ----------
-const fieldMap = {f_reportno:'reportNo', f_customer:'customer', f_manufacturer:'manufacturer', f_idno:'idno', f_number:'number',
+const fieldMap = {f_reportNo:'reportNo', f_customer:'customer', f_manufacturer:'manufacturer', f_idno:'idno', f_number:'number',
   f_wll:'wll', f_falls:'falls', f_email:'email', f_customerpin:'customerpin', f_date:'date', f_engineer:'engineer'};
 Object.entries(fieldMap).forEach(([elId,key])=>{
   const el = document.getElementById(elId);
@@ -1051,19 +1055,6 @@ function updateTopbarSub(){
     (state.reportNo ? state.reportNo + ' · ' : '') + (state.customer || 'New report') + ' · ' + formatDateUK(state.date) + (state.engineer ? ' · '+state.engineer : '');
 }
 
-function nextReportNumber(){
-  const year = new Date().getFullYear();
-  const idx = storeGet('report_index') || [];
-  let max = 0;
-  idx.forEach(e=>{
-    const m = String(e.reportNo||'').match(new RegExp('^KE-'+year+'-(\\d{4})$','i'));
-    if(m) max = Math.max(max, Number(m[1])||0);
-  });
-  return 'KE-'+year+'-'+String(max+1).padStart(4,'0');
-}
-
-if(!state.reportNo) state.reportNo = nextReportNumber();
-
 // ---------- local storage helper (works once this file is opened in a real browser tab) ----------
 function storeGet(key){
   try{ const v = localStorage.getItem('crane_report_'+key); return v ? JSON.parse(v) : null; }
@@ -1101,14 +1092,14 @@ companySelect.addEventListener('change', ()=>{
   if(!c) return;
   // only the customer's own details carry over — everything crane-specific
   // starts blank since the same customer can have several different cranes
-  state.customer=c.customer||''; state.email=c.email||''; state.customerpin=c.customerpin||'';
+  state.customer=c.customer||''; state.email=c.email||''; state.customerpin=c.customerpin||''; state.reportNo=''; state._reportId='';
   state.manufacturer=''; state.idno=''; state.number=''; state.wll=''; state.falls=''; state.engineer='';
+  document.getElementById('f_reportNo').value=state.reportNo||'';
   document.getElementById('f_customer').value=state.customer;
   document.getElementById('f_email').value=state.email;
   document.getElementById('f_customerpin').value=state.customerpin;
   document.getElementById('f_manufacturer').value='';
   document.getElementById('f_idno').value='';
-  document.getElementById('f_reportno').value=nextReportNumber();
   document.getElementById('f_number').value='';
   document.getElementById('f_wll').value='';
   document.getElementById('f_falls').value='';
@@ -1141,27 +1132,22 @@ document.getElementById('saveCompanyBtn').addEventListener('click', async ()=>{
 
 // ---------- saved reports ----------
 const historySelect = document.getElementById('reportHistorySelect');
-const historySearch = document.getElementById('reportHistorySearch');
 async function loadReportIndex(){
   return storeGet('report_index') || [];
 }
 async function refreshHistorySelect(){
   const idx = await loadReportIndex();
-  const q = String(historySearch.value||'').trim().toLowerCase();
   historySelect.innerHTML = '<option value="">— Load a previously saved report —</option>';
-  idx.slice().reverse().filter(entry=>{
-    if(!q) return true;
-    return [entry.reportNo,entry.customer,entry.number,entry.idno,entry.engineer,entry.date,entry.visitType]
-      .some(v=>String(v||'').toLowerCase().includes(q));
-  }).forEach(entry=>{
+  idx.slice().reverse().forEach(entry=>{
     const o = document.createElement('option');
     o.value = entry.id;
-    o.textContent = `${entry.reportNo || 'no report no.'} — ${entry.customer || '(unnamed)'} — ${entry.number || 'no crane no.'} — ${formatDateUK(entry.date)}`;
+    o.textContent = `${entry.reportNo ? entry.reportNo+' · ' : ''}${entry.customer || '(unnamed)'} — ${entry.number || 'no crane no.'} — ${formatDateUK(entry.date)}`;
     historySelect.appendChild(o);
   });
 }
-historySearch.addEventListener('input', refreshHistorySelect);
+async function migrateReportNumbers(){ try{ const idx=await loadReportIndex(); const used=new Set(idx.map(x=>x.reportNo).filter(Boolean)); let changed=false; for(const e of idx){ const full=storeGet('report_'+e.id); if(full&&!full.reportNo){ const y=(full.date||new Date().toISOString().slice(0,10)).slice(0,4); let n=1,c=''; do{c='KE-'+y+'-'+String(n++).padStart(4,'0');}while(used.has(c)); full.reportNo=c; e.reportNo=c; used.add(c); storeSet('report_'+e.id,full); changed=true; } } if(changed) storeSet('report_index',idx); }catch(e){} }
 refreshHistorySelect();
+migrateReportNumbers().then(refreshHistorySelect);
 
 // ---------- LOLER re-examination reminders ----------
 // Scans every LOLER report saved on this device — this only runs when the
@@ -1281,20 +1267,29 @@ function setStatusMsg(msg, type){
 }
 
 // ---------- save report ----------
+function nextReportNumber(existing){
+  const year = (state.date || new Date().toISOString().slice(0,10)).slice(0,4);
+  let max = 0;
+  (existing||[]).forEach(x=>{ const m=String(x.reportNo||'').match(new RegExp('^KE-'+year+'-(\\d+)$')); if(m) max=Math.max(max,Number(m[1])); });
+  return 'KE-'+year+'-'+String(max+1).padStart(4,'0');
+}
 async function saveReport(){
   if(!state.customer){ setStatusMsg('Add a customer name before saving.', 'err'); return false; }
-  const reportId = Date.now().toString();
   try{
+    let idx = await loadReportIndex();
+    const reportId = state._reportId || ('r_'+Date.now()+'_'+Math.random().toString(36).slice(2,8));
+    if(!state.reportNo) state.reportNo = nextReportNumber(idx);
+    state._reportId = reportId;
     storeSet('report_'+reportId, state);
-    const idx = await loadReportIndex();
-    idx.push({id:reportId, reportNo:state.reportNo, customer:state.customer, idno:state.idno, number:state.number, date:state.date, engineer:state.engineer, visitType:state.visitType});
-    storeSet('report_index', idx);
-    await refreshHistorySelect();
-    await checkUpcomingLolerReminders();
-    try{ wkRender(); }catch(e){ /* weekly list is a bonus — never block a save */ }
-    try{ syncAfterSave({id:reportId, r:state}); }catch(e){ /* sync must never block a save */ }
+    const entry={id:reportId,reportNo:state.reportNo,customer:state.customer,idno:state.idno,number:state.number,date:state.date,visitType:state.visitType,engineer:state.engineer};
+    const pos=idx.findIndex(x=>x&&x.id===reportId); if(pos>=0) idx[pos]=entry; else idx.push(entry);
+    storeSet('report_index',idx);
+    document.getElementById('f_reportNo').value=state.reportNo; updateTopbarSub();
+    await refreshHistorySelect(); await checkUpcomingLolerReminders();
+    try{ wkRender(); }catch(e){}
+    try{ syncAfterSave({id:reportId,r:state}); }catch(e){}
     return true;
-  }catch(e){ setStatusMsg('Could not save report: '+e.message, 'err'); return false; }
+  }catch(e){ setStatusMsg('Could not save report: '+(e.message||e), 'err'); return false; }
 }
 
 document.getElementById('btnSave').addEventListener('click', async ()=>{
@@ -1309,7 +1304,7 @@ function freshState(keepEngineer){
     items[id] = {status:null, note:'', photo:null, label: state.items[id].label, group: state.items[id].group};
   });
   return {
-    reportNo:nextReportNumber(), customer:'', manufacturer:'', idno:'', number:'', wll:'', falls:'', email:'', customerpin:'',
+    customer:'', manufacturer:'', idno:'', number:'', wll:'', falls:'', email:'', customerpin:'',
     date: new Date().toISOString().slice(0,10),
     engineer: keepEngineer ? state.engineer : '',
     visitType:'Service', notes:'',
@@ -1540,6 +1535,8 @@ document.getElementById('btnPrint').addEventListener('click', async ()=>{
   const btn = document.getElementById('btnPrint');
   btn.disabled = true; btn.textContent = 'Preparing…';
   try{
+    if(!state.customer) throw new Error('Add a customer before printing the report.');
+    if(!state._reportId || !state.reportNo){ const ok=await saveReport(); if(!ok) throw new Error('The report could not be saved before printing.'); }
     const doc = state.visitType === 'LOLER' ? await buildLolerPdfBlob() : await buildPdfBlob();
     const blobUrl = doc.output('bloburl');
     const w = window.open(blobUrl, '_blank');
@@ -1628,7 +1625,6 @@ function buildQrLabelPdf(){
   doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(20,20,20);
   doc.splitTextToSize(state.customer||'Unnamed customer', textW).slice(0,2).forEach(line=>{ doc.text(line, textX, ty); ty += 8.5; });
   doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(50,55,62);
-  if(state.reportNo){ doc.text(doc.splitTextToSize('Report: '+state.reportNo, textW)[0], textX, ty); ty += 7; }
   if(state.number){ doc.text(doc.splitTextToSize('Crane: '+state.number, textW)[0], textX, ty); ty += 7; }
   if(state.idno){ doc.text(doc.splitTextToSize('ID: '+state.idno, textW)[0], textX, ty); ty += 7; }
   doc.setFont('helvetica','italic'); doc.setFontSize(6); doc.setTextColor(130,130,130);
@@ -1777,24 +1773,32 @@ async function buildPdfBlob(){
 }
 
 function reportFilename(){
-  const reportNo = (state.reportNo||'report').replace(/[^a-z0-9-]+/gi,'_');
   const cust = (state.customer||'report').replace(/[^a-z0-9]+/gi,'_');
   const craneNo = (state.number||'').trim().replace(/[^a-z0-9]+/gi,'_');
-  return `${reportNo}_${cust}${craneNo?'_'+craneNo:''}_${state.visitType}_${state.date}.pdf`;
+  return `${state.reportNo ? state.reportNo+'_' : ''}${cust}${craneNo?'_'+craneNo:''}_${state.visitType}_${state.date}.pdf`;
 }
 
 document.getElementById('btnPdf').addEventListener('click', async ()=>{
-  const btn = document.getElementById('btnPdf');
-  btn.disabled = true; btn.textContent = 'Building PDF…';
+  const btn = document.getElementById('btnPdf'); btn.disabled=true; btn.textContent='Building PDF…';
   try{
-    const pdf = await buildPdfBlob();
-    pdf.save(reportFilename());
-    setStatusMsg('PDF downloaded.', 'ok');
-  }catch(e){
-    setStatusMsg('Could not build PDF: '+e.message, 'err');
-  }finally{
-    btn.disabled = false; btn.textContent = '📄 Download PDF';
-  }
+    if(!state.customer) throw new Error('Add a customer before exporting the report.');
+    if(!state._reportId || !state.reportNo){ const ok=await saveReport(); if(!ok) throw new Error('The report could not be saved, so the PDF was not exported.'); }
+    const pdf = state.visitType==='LOLER' ? await buildLolerPdfBlob() : await buildPdfBlob();
+    const blob=pdf.output('blob'), filename=state.visitType==='LOLER'?lolerFilename():reportFilename(), file=new File([blob],filename,{type:'application/pdf'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){ try{ await navigator.share({files:[file],title:filename}); setStatusMsg('PDF ready — shared successfully.','ok'); return; }catch(e){ if(e.name==='AbortError') return; } }
+    const url=URL.createObjectURL(blob), w=window.open(url,'_blank');
+    if(!w){ const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); }
+    setTimeout(()=>URL.revokeObjectURL(url),10000); setStatusMsg('PDF opened — use Share/Save from the PDF viewer.','ok');
+  }catch(e){ setStatusMsg('Could not export PDF: '+(e.message||e),'err'); }
+  finally{ btn.disabled=false; btn.textContent='📄 Download PDF'; }
+});
+
+document.getElementById('btnExportReport').addEventListener('click', async ()=>{
+  try{
+    if(!state.customer){ setStatusMsg('Open or fill in a report first.','err'); return; }
+    if(!state._reportId || !state.reportNo){ const ok=await saveReport(); if(!ok) return; }
+    await exportReportFile([{id:state._reportId,r:state,src:'local'}], state.reportNo || 'Key_Engineering_Report');
+  }catch(e){ setStatusMsg('Could not export report: '+(e.message||e),'err'); }
 });
 
 // ---------- LOLER 1998 thorough examination report ----------
@@ -1808,11 +1812,10 @@ function equipmentTypeLabel(type){
 }
 
 function lolerFilename(){
-  const reportNo = (state.reportNo||'report').replace(/[^a-z0-9-]+/gi,'_');
   const cust = (state.customer||'report').replace(/[^a-z0-9]+/gi,'_');
   const craneNo = (state.number||'').trim().replace(/[^a-z0-9]+/gi,'_');
   const equip = equipmentTypeLabel(state.loler.equipmentType).replace(/[^a-z0-9]+/gi,'_');
-  return `${cust}${craneNo?'_'+craneNo:''}_LOLER_${equip}_${state.date}.pdf`;
+  return `${state.reportNo ? state.reportNo+'_' : ''}${cust}${craneNo?'_'+craneNo:''}_LOLER_${equip}_${state.date}.pdf`;
 }
 
 async function buildLolerPdfBlob(){
@@ -2045,7 +2048,7 @@ function reportPlainText(full){
 document.getElementById('btnEmail').addEventListener('click', async ()=>{
   if(!state.email){ setStatusMsg('Add a customer email address first.', 'err'); return; }
   const btn = document.getElementById('btnEmail');
-  const subject = `Crane Service Report ${state.reportNo ? '– '+state.reportNo+' ' : ''}– ${state.customer} – ${state.date}`;
+  const subject = `Crane Service Report – ${state.customer} – ${state.date}`;
 
   // Try to actually attach the PDF via the device's native share sheet — this is
   // the only route a website has to hand a real file to the Mail app. It can't
@@ -2404,7 +2407,7 @@ function wkExportReport(x){
   const r = x.r || {};
   const loler = r.loler || {};
   return {
-    id:x.id, customer:r.customer||'', email:r.email||'', idno:r.idno||'', number:r.number||'',
+    id:x.id, reportNo:r.reportNo||'', customer:r.customer||'', email:r.email||'', idno:r.idno||'', number:r.number||'',
     manufacturer:r.manufacturer||'', wll:r.wll||'', falls:r.falls||'',
     date:wkReportDate(x), engineer:r.engineer||'', visitType:r.visitType||'Service', notes:r.notes||'',
     loler:{
@@ -2417,6 +2420,18 @@ function wkExportReport(x){
       status:it.status||null, group:it.group||'', label:it.label||'', note:it.note||'', hasPhoto:!!(it.photo || it.hasPhoto)
     }))
   };
+}
+
+async function exportReportFile(reports,label){
+  const local=wkDedupe(reports.filter(x=>x&&x.src==='local'));
+  if(!local.length){ wkMsg('There are no saved reports to export.','err'); return; }
+  const payload={app:'crane-report',kind:'weekly-repairs',version:2,exportedAt:new Date().toISOString(),weekStart:'',reports:local.map(wkExportReport)};
+  const fname=(label||'crane_reports')+'_'+new Date().toISOString().slice(0,10)+'.json';
+  const file=new File([JSON.stringify(payload,null,2)],fname,{type:'application/json'});
+  try{ if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:label||'Crane reports'}); wkMsg('Export ready — use the Share sheet to save or send the file.','ok'); return; } }catch(e){ if(e.name==='AbortError') return; }
+  const url=URL.createObjectURL(file),w=window.open(url,'_blank');
+  if(!w){ const a=document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove(); }
+  setTimeout(()=>URL.revokeObjectURL(url),10000); wkMsg('Export file opened — use Share/Save from the browser.','ok');
 }
 
 async function wkExport(){
@@ -2456,7 +2471,8 @@ function wkSanitize(j){
     if(!r || !wkParse(r.date)) return;
     const loler = r.loler || {};
     incoming.push({
-      id: wkClean(r.id,20) || String(Date.now()),
+      id: wkClean(r.id,40) || ('imp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)),
+      reportNo: wkClean(r.reportNo,30),
       customer: wkClean(r.customer,120), email: wkClean(r.email,120), idno: wkClean(r.idno,60),
       number: wkClean(r.number,60), manufacturer: wkClean(r.manufacturer,60),
       wll: wkClean(r.wll,40), falls: wkClean(r.falls,40),
@@ -2493,6 +2509,7 @@ function wkPromoteToLocalReport(rep){
   });
   const loler = rep.loler || {};
   const full = {
+    reportNo:rep.reportNo||'', _reportId:'',
     customer:rep.customer||'', manufacturer:rep.manufacturer||'', idno:rep.idno||'', number:rep.number||'',
     wll:rep.wll||'', falls:rep.falls||'', email:rep.email||'', date:rep.date||'', engineer:rep.engineer||'',
     visitType:rep.visitType||'Service', notes:rep.notes||'',
@@ -2508,7 +2525,7 @@ function wkPromoteToLocalReport(rep){
   storeSet('report_'+reportId, full);
   const idx = wkArr(storeGet('report_index'));
   if(!idx.some(e=>e && e.id===reportId)){
-    idx.push({id:reportId, customer:full.customer, idno:full.idno, number:full.number, date:full.date, visitType:full.visitType});
+    idx.push({id:reportId, reportNo:full.reportNo||'', customer:full.customer, idno:full.idno, number:full.number, date:full.date, visitType:full.visitType, engineer:full.engineer});
     storeSet('report_index', idx);
   }
   return reportId;
@@ -2583,6 +2600,8 @@ document.getElementById('wkPdf').addEventListener('click', async ()=>{
 });
 
 document.getElementById('wkExport').addEventListener('click', wkExport);
+document.getElementById('wkExportAll').addEventListener('click', async ()=>{ try{ await exportReportFile(wkAllReports(),'Key_Engineering_All_Reports'); }catch(e){ wkMsg('Could not export reports: '+(e.message||e),'err'); } });
+document.getElementById('wkExportCurrent').addEventListener('click', async ()=>{ try{ if(!state.customer){ wkMsg('Open or fill in a report first.','err'); return; } if(!state._reportId||!state.reportNo){ const ok=await saveReport(); if(!ok) return; } await exportReportFile([{id:state._reportId,r:state,src:'local'}],state.reportNo||'Key_Engineering_Report'); }catch(e){ wkMsg('Could not export report: '+(e.message||e),'err'); } });
 document.getElementById('wkImportBtn').addEventListener('click', ()=> document.getElementById('wkImportFile').click());
 document.getElementById('wkImportFile').addEventListener('change', async e=>{
   const files = [...e.target.files];
