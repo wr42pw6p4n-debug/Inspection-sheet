@@ -15,7 +15,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <style>
   :root{
     --steel-900:#161b22;
@@ -137,6 +136,26 @@
   }
   .btn-ghost:hover{background:var(--steel-100);}
 
+
+  /* engineers' chat */
+  .chat-row{display:block; width:100%; text-align:left; background:#fff; border:1.5px solid var(--line); border-radius:8px; padding:9px 12px; margin-bottom:8px; cursor:pointer; font:inherit; color:var(--ink);}
+  .chat-row:hover{background:var(--steel-100);}
+  .chat-row.unread{border-color:var(--urgent); background:#fff6f6;}
+  .chat-row .ct{font-weight:700; font-size:14px; display:flex; gap:8px; align-items:center;}
+  .chat-row .cs{font-size:12.5px; color:var(--ink-soft); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .chat-row .cm{font-size:11px; color:var(--ink-soft); margin-top:2px;}
+  .chat-dot{background:var(--urgent); color:#fff; font-size:11px; font-weight:700; border-radius:10px; padding:1px 7px;}
+  .chat-solved{background:var(--serv); color:#fff; font-size:11px; font-weight:700; border-radius:10px; padding:1px 7px;}
+  .chat-msgs{max-height:55vh; overflow-y:auto; padding:4px 2px; margin:8px 0;}
+  .chat-b{max-width:85%; margin:0 0 8px; padding:8px 11px; border-radius:12px; background:var(--steel-100); font-size:14px; line-height:1.4; word-wrap:break-word; white-space:pre-wrap;}
+  .chat-b.me{margin-left:auto; background:#dbeafe;}
+  .chat-b .cn{font-size:11px; font-weight:700; color:var(--ink-soft); display:block; margin-bottom:2px;}
+  .chat-b .cw{font-size:10.5px; color:var(--ink-soft); display:block; margin-top:3px; text-align:right;}
+  .chat-b img{max-width:220px; max-height:220px; border-radius:8px; display:block; margin-top:4px; cursor:zoom-in;}
+  .chat-b img.big{max-width:100%; max-height:none; cursor:zoom-out;}
+  .chat-compose textarea, #chatNewForm textarea{width:100%; min-height:60px; padding:9px; border:1.5px solid var(--line); border-radius:7px; font:inherit; font-size:14px; resize:vertical;}
+  #chatNewForm input[type=text]{width:100%;}
+
   /* legend */
   .legend{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;}
   .legend span{
@@ -168,6 +187,21 @@
   .item-note{margin-top:8px; display:none;}
   .item-note.show{display:block;}
   .item-note input{font-size:13.5px; padding:7px 9px;}
+  .work-toggle{margin-top:8px; display:none; border:1.5px dashed var(--steel-700); background:#fff; border-radius:7px; font-size:12px; font-weight:700; padding:6px 10px; cursor:pointer; color:var(--steel-800);}
+  .work-toggle.show{display:inline-block;}
+  .item-note.work input{border-color:var(--serv);}
+  .notif-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  .notif-btn{position:relative; text-align:left; border:2px solid var(--line); background:#fff; border-radius:10px; padding:12px 12px 10px; cursor:pointer; font:inherit; color:var(--ink); min-height:64px;}
+  .notif-btn .nb-icon{font-size:20px; display:block;}
+  .notif-btn .nb-label{font-weight:700; font-size:13.5px; display:block; margin-top:2px;}
+  .notif-btn .nb-sub{font-size:11.5px; color:var(--ink-soft); display:block;}
+  .notif-btn .nb-count{position:absolute; top:-8px; right:-6px; min-width:26px; height:26px; line-height:26px; border-radius:13px; text-align:center; font-weight:800; font-size:13px; color:#fff; background:#9aa3ad; padding:0 6px; box-shadow:0 1px 3px rgba(0,0,0,.25);}
+  .notif-btn.hot .nb-count{background:var(--urgent);}
+  .notif-btn.warm .nb-count{background:#b89400;}
+  .notif-btn.good .nb-count{background:var(--serv);}
+  .notif-btn.open{border-color:var(--steel-900); background:#f3f6f9;}
+  .notif-btn.zero{opacity:.6;}
+  @media(min-width:640px){ .notif-grid{grid-template-columns:repeat(5,1fr);} }
   .photo-row{display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap;}
   .photo-btn{
     border:1.5px dashed var(--steel-700); background:#fff; border-radius:7px;
@@ -298,18 +332,110 @@
     <p class="report-sub" id="topbarSub">New report — not yet saved</p>
   </div>
 
-  <!-- TEAM SYNC (OneDrive) -->
+  <!-- iPad ALERT SETUP -->
+  <div class="no-print" id="alertSetup" style="margin:10px 0; padding:10px 12px; border:1.5px dashed var(--steel-700); border-radius:10px; background:#fff;">
+    <div id="alertMsg" style="font-size:13px;"></div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+      <button class="btn-ghost" id="btnAlertOn" type="button">🔔 Turn on iPad alerts</button>
+      <button class="btn-ghost" id="btnAlertTest" type="button" style="display:none;">Send a test alert</button>
+      <button class="btn-ghost" id="btnAlertOff" type="button" style="display:none;">Turn off</button>
+    </div>
+  </div>
+
+  <!-- DUE DATES (services, inspections, LOLER) -->
+  <div class="section no-print" id="reminderCard" style="display:none;">
+    <div class="section-head"><div class="section-tag" style="background:var(--urgent);"></div><h2 id="dueTitle">⏰ Due Dates</h2></div>
+    <div class="section-body">
+      <div class="field" style="max-width:260px;"><label for="dueWindow">Count services, inspections &amp; LOLER due within</label>
+        <select id="dueWindow"><option value="7">7 days</option><option value="14">14 days</option><option value="30" selected>30 days</option><option value="60">60 days</option><option value="90">90 days</option></select>
+      </div>
+      <div id="notifGrid" class="notif-grid" style="margin-top:12px;"></div>
+      <div id="reminderList" style="margin-top:10px;"></div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+        <button class="btn-ghost" id="btnDueCalAll" type="button">📅 Add all to my calendar</button>
+        <button class="btn-ghost" id="btnEmailReminders" type="button">✉️ Email me this list</button>
+      </div>
+      <div class="field full" style="margin-top:10px;"><label>Your email (for the email button)</label><input type="email" id="reminderEmail"></div>
+      <p class="note-inline">Calendar events set their own alerts on your iPad/phone &mdash; 30 days before, 7 days before and on the day &mdash; so you get a proper notification even when the app is closed.</p>
+    </div>
+  </div>
+
+  <!-- ENGINEERS' CHAT -->
+  <div class="section no-print" id="chatSection">
+    <div class="section-head"><div class="section-tag"></div><h2>Engineers' Chat</h2></div>
+    <div class="section-body">
+      <button class="btn-ghost" id="btnChatToggle" type="button" style="width:100%;">💬 Open Engineers' Chat</button>
+      <div id="chatBody" style="display:none; margin-top:12px;">
+        <p class="note-inline" id="chatMsg" style="margin-top:0;"></p>
+        <div id="chatListView">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+            <button class="btn-ghost" id="btnChatNew" type="button">✏️ New topic</button>
+            <button class="btn-ghost" id="btnChatRefresh" type="button">🔄 Refresh</button>
+          </div>
+          <div id="chatNewForm" style="display:none; margin-bottom:12px;">
+            <div class="field full"><label for="chatNewTitle">What's the problem / question?</label><input type="text" id="chatNewTitle" maxlength="120" placeholder="e.g. Hoist won't lower after limit trip"></div>
+            <div class="field full"><label for="chatNewTag">Crane / customer / site (optional)</label><input type="text" id="chatNewTag" maxlength="80"></div>
+            <div class="field full"><label for="chatNewBody">Details</label><textarea id="chatNewBody" placeholder="What did you find? What have you tried?"></textarea></div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button class="btn-ghost" id="btnChatNewPhoto" type="button">📷 Add photo</button>
+              <span class="note-inline" id="chatNewPhotoName" style="margin:0;"></span>
+              <button class="btn-ghost" id="btnChatPost" type="button">Post to team</button>
+              <button class="btn-ghost" id="btnChatNewCancel" type="button">Cancel</button>
+            </div>
+          </div>
+          <div id="chatList"></div>
+        </div>
+        <div id="chatThreadView" style="display:none;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <button class="btn-ghost" id="btnChatBack" type="button">← All topics</button>
+            <button class="btn-ghost" id="btnChatSolved" type="button">✔ Mark solved</button>
+            <button class="btn-ghost" id="btnChatDelete" type="button" style="display:none;">🗑 Delete topic</button>
+          </div>
+          <h3 id="chatThreadTitle" style="margin:10px 0 0; font-size:16px;"></h3>
+          <p class="note-inline" id="chatThreadTag" style="margin-top:2px;"></p>
+          <div class="chat-msgs" id="chatMsgs"></div>
+          <div class="chat-compose">
+            <textarea id="chatReply" placeholder="Write a reply…"></textarea>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px;">
+              <button class="btn-ghost" id="btnChatPhoto" type="button">📷 Photo</button>
+              <span class="note-inline" id="chatPhotoName" style="margin:0;"></span>
+              <button class="btn-ghost" id="btnChatSend" type="button">Send</button>
+            </div>
+          </div>
+        </div>
+        <input type="file" id="chatFile" accept="image/*" style="display:none;">
+      </div>
+    </div>
+  </div>
+
+  <!-- TEAM SYNC (Supabase) -->
   <div class="section no-print">
-    <div class="section-head"><div class="section-tag"></div><h2>Team Sync — OneDrive</h2></div>
+    <div class="section-head"><div class="section-tag"></div><h2>Team Sync — Cloud</h2></div>
     <div class="section-body">
       <p class="note-inline" id="syncStatusText" style="margin-top:0;">Checking sync status…</p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="btn-ghost" id="btnMsSignIn" type="button" style="display:none;">🔑 Sign in with Microsoft</button>
-        <button class="btn-ghost" id="btnSyncNow" type="button" style="display:none;">🔄 Sync now</button>
-        <button class="btn-ghost" id="btnMsSignOut" type="button" style="display:none;">Sign out</button>
+      <div id="sbLoginForm" style="display:none;">
+        <div class="field full"><label for="sbEmail">Email</label><input type="email" id="sbEmail" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off"></div>
+        <div class="field full" style="margin-top:8px;"><label for="sbPassword">Password</label><input type="password" id="sbPassword" autocomplete="current-password"></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+          <button class="btn-ghost" id="btnSbSignIn" type="button">🔑 Sign in</button>
+          <button class="btn-ghost" id="btnSbForgot" type="button">Forgot password?</button>
+        </div>
       </div>
-      <p class="note-inline" id="syncRedirectInfo" style="display:none;"></p>
-      <p class="note-inline" id="syncConfigHint" style="display:none;">OneDrive sync isn't set up yet — add your Client ID, Tenant ID and shared folder link in the MS_CONFIG block near the top of the file, then re-upload.</p>
+      <div id="sbSignedIn" style="display:none;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-ghost" id="btnSyncNow" type="button">🔄 Sync now</button>
+          <button class="btn-ghost" id="btnSbChangePw" type="button">Change password</button>
+          <button class="btn-ghost" id="btnMsSignOut" type="button">Sign out</button>
+        </div>
+        <p class="note-inline"><a href="#" id="btnSyncAll">Re-download everything from the cloud</a></p>
+      </div>
+      <div id="sbPwForm" style="display:none; margin-top:10px;">
+        <div class="field full"><label for="sbNewPw">New password (at least 8 characters)</label><input type="password" id="sbNewPw" autocomplete="new-password"></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <button class="btn-ghost" id="btnSbSavePw" type="button">Save new password</button>
+          <button class="btn-ghost" id="btnSbCancelPw" type="button">Cancel</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -341,7 +467,6 @@
       <p class="note-inline" style="margin-top:-2px;">Fill in the details below, then tap "Save as company" to remember this customer — selecting them here next time auto-fills everything.</p>
 
       <div class="grid" style="margin-top:14px;">
-        <div class="field"><label>Report Number</label><input type="text" id="f_reportNo" readonly></div>
         <div class="field"><label>Customer</label><input type="text" id="f_customer"></div>
         <div class="field"><label>Manufacturer</label><input type="text" id="f_manufacturer"></div>
         <div class="field"><label>Identification No.</label><input type="text" id="f_idno"></div>
@@ -349,9 +474,16 @@
         <div class="field"><label>Hoist WLL</label><input type="text" id="f_wll"></div>
         <div class="field"><label>Falls</label><input type="text" id="f_falls"></div>
         <div class="field"><label>Customer email</label><input type="email" id="f_email"></div>
+        <div class="field"><label>Site / location</label><input type="text" id="f_site" placeholder="e.g. Unit 4, Chesterfield depot"></div>
         <div class="field"><label>Customer portal PIN</label><input type="text" id="f_customerpin" inputmode="numeric" maxlength="6" placeholder="4\u20136 digits"></div>
         <div class="field"><label>Date</label><input type="date" id="f_date"></div>
         <div class="field"><label>Engineer</label><input type="text" id="f_engineer" placeholder="Your name"></div>
+        <div class="field"><label>Next due date</label><input type="date" id="f_nextdue"></div>
+        <div class="field"><label>Set next due in…</label>
+          <div class="visit-toggle" id="dueQuick"><button type="button" data-m="3">3 months</button><button type="button" data-m="6">6 months</button><button type="button" data-m="12">12 months</button></div>
+        </div>
+        <div class="field full"><button class="btn-ghost" id="btnDueCal" type="button">📅 Add this next due date to my calendar</button></div>
+        <div class="field"><label>Report no.</label><input type="text" id="f_reportNo" readonly placeholder="Given when you save" style="background:#f3f5f7;font-weight:700;"></div>
         <div class="field">
           <label>Type of visit</label>
           <div class="visit-toggle" id="visitTypeToggle">
@@ -437,17 +569,6 @@
     </div>
   </div>
 
-  <!-- LOLER RE-EXAMINATION REMINDERS -->
-  <div class="section no-print" id="reminderCard" style="display:none;">
-    <div class="section-head"><div class="section-tag" style="background:var(--urgent);"></div><h2>⏰ Upcoming Re-examinations</h2></div>
-    <div class="section-body">
-      <p class="note-inline" style="margin-top:-4px;">Checked from LOLER reports saved on this device — due within 30 days, or overdue.</p>
-      <div id="reminderList"></div>
-      <div class="field full" style="margin-top:10px;"><label>Your email (for the reminder button below)</label><input type="email" id="reminderEmail"></div>
-      <button class="btn-ghost" id="btnEmailReminders" type="button">✉️ Email me this list</button>
-    </div>
-  </div>
-
   <!-- PAST REPORTS -->
   <div class="section no-print">
     <div class="section-head"><div class="section-tag"></div><h2>Saved Reports</h2></div>
@@ -456,6 +577,20 @@
         <select id="reportHistorySelect"><option value="">— Load a previously saved report —</option></select>
       </div>
       <p class="note-inline" id="historyHint">Reports you save are stored in this browser on this device — they won't appear if you open the file on a different phone or computer, or in private/incognito mode.</p>
+    </div>
+  </div>
+
+  <!-- EQUIPMENT HISTORY -->
+  <div class="section no-print" id="equipHistoryCard">
+    <div class="section-head"><div class="section-tag"></div><h2>Equipment History</h2></div>
+    <div class="section-body">
+      <button class="btn-ghost" id="btnEqToggle" type="button" style="width:100%;">🕘 Show Equipment History</button>
+      <div id="eqBody" style="display:none; margin-top:12px;">
+      <p class="note-inline" style="margin-top:-4px;">Every visit to a piece of equipment, newest first &mdash; what was found and what work was carried out. Search by crane or ID number, customer, site, engineer, date (e.g. 9 October, 09/10/2026 or October 2026), report number or a word from the findings (e.g. brake). You can combine words — &ldquo;PL14 dave&rdquo; — or scan the equipment's QR label.</p>
+      <div class="field full"><input type="search" id="eqSearch" placeholder="Crane, customer, site, engineer, date…"></div>
+      <div id="eqResults" style="margin-top:8px;"></div>
+      <div id="eqTimeline"></div>
+      </div>
     </div>
   </div>
 
@@ -493,11 +628,9 @@
 
       <details class="wk-more">
         <summary>Combine reports from other phones</summary>
-        <p class="note-inline">With OneDrive sync switched on (top of the page) reports arrive on their own. Otherwise, they're saved on the phone they were written on: on each engineer's phone, open this section, pick the week and tap Export, then send the file over. On this device, tap Add reports and choose the file(s) — the full reports are merged in (they'll show up in Saved Reports too, not just the list below), minus photos and signatures to keep the file small.</p>
+        <p class="note-inline">When you're signed in to Team Sync, reports arrive on their own. Otherwise, they're saved on the phone they were written on: on each engineer's phone, open this section, pick the week and tap Export, then send the file over. On this device, tap Add reports and choose the file(s) — the full reports are merged in (they'll show up in Saved Reports too, not just the list below), minus photos and signatures to keep the file small.</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
           <button class="btn-ghost" id="wkExport" type="button">📤 Export this week's reports</button>
-          <button class="btn-ghost" id="wkExportAll" type="button">📤 Export all saved reports</button>
-          <button class="btn-ghost" id="wkExportCurrent" type="button">📄 Export current report</button>
           <button class="btn-ghost" id="wkImportBtn" type="button">📥 Add reports…</button>
           <button class="btn-ghost" id="wkClearImported" type="button" style="display:none;">Clear added reports</button>
         </div>
@@ -515,12 +648,11 @@
   <button class="action-btn yellow" id="btnComplete" type="button">✅ Complete &amp; start new</button>
   <button class="action-btn outline" id="btnPrint" type="button">🖨️ Print</button>
   <button class="action-btn outline" id="btnQrLabel" type="button">🏷️ Print QR Label</button>
-  <button class="action-btn outline" id="btnPdf" type="button">📄 Download / Export PDF</button>
-  <button class="action-btn outline" id="btnExportReport" type="button">📤 Export report file</button>
+  <button class="action-btn outline" id="btnPdf" type="button">📄 Download PDF</button>
   <button class="action-btn outline" id="btnLoler" type="button" style="display:none; border-color:var(--serv); color:var(--serv);">📋 Download LOLER Report</button>
   <button class="action-btn yellow" id="btnEmail" type="button">✉️ Email customer</button>
   <button class="action-btn outline" id="btnCopyText" type="button">📋 Copy report text</button>
-  <button class="action-btn outline" id="btnOnedrive" type="button">☁️ Save to OneDrive</button>
+  <button class="action-btn outline" id="btnOnedrive" type="button">☁️ Save PDF to cloud</button>
 </div>
 <div class="status-msg no-print" id="statusMsg"></div>
 
@@ -528,17 +660,13 @@
 (function(){
 
 // ============================================================================
-// ONEDRIVE TEAM SYNC — fill these three in, then re-upload this file.
-//   clientId         Application (client) ID of the Microsoft Entra app registration
-//   tenantId         Directory (tenant) ID
-//   sharedFolderLink the "Copy link" share link of the OneDrive/SharePoint folder
-//                    every engineer should sync to (must allow people to edit)
-// These are not passwords — leaving them in the file is fine.
+// TEAM SYNC (Supabase). The project URL and the publishable key are safe to leave
+// in the file — they are not passwords. Data is protected by the logins and the
+// row-level security rules set up in Supabase, never by hiding this key.
 // ============================================================================
-const MS_CONFIG = {
-  clientId: '9c20c7b9-555d-4bd6-9a62-2a1dd5b4cb6d',
-  tenantId: 'c40d9f52-c5bb-40ac-974e-074bf6b712b5',
-  sharedFolderLink: ''
+const SB_CONFIG = {
+  url: 'https://eyerpokgadrgxticqzez.supabase.co',
+  key: 'sb_publishable_FsyUdlUOTgA51pkAy5pNiA_AsHqq6Ed'
 };
 
 // company logo (embedded so the report works fully offline)
@@ -654,9 +782,9 @@ let ITEM_IDS = [];
 
 // ---------- state ----------
 let state = {
-  customer:'', manufacturer:'', idno:'', number:'', wll:'', falls:'', email:'', customerpin:'', reportNo:'', _reportId:'',
+  customer:'', manufacturer:'', idno:'', number:'', wll:'', falls:'', email:'', customerpin:'',
   date: new Date().toISOString().slice(0,10),
-  engineer:'', visitType:'Service', notes:'',
+  engineer:'', visitType:'Service', notes:'', reportNo:'', nextdue:'', site:'', cloudId:'',
   loler:{location:'', makeserial:'', swl:'', description:'', prevexam:'', nextexam:'', ourref:'', extraA:'', extraB:'', extraC:'', signname:'', signature:null, equipmentType:'CRANE'},
   items:{} // id -> {status, note}
 };
@@ -700,7 +828,7 @@ function buildChecklistDom(){
     g.items.forEach(label=>{
       const id = slug(g.group)+'__'+slug(label);
       ITEM_IDS.push(id);
-      if(!state.items[id]) state.items[id] = {status:null, note:'', photo:null, label, group:g.group};
+      if(!state.items[id]) state.items[id] = {status:null, note:'', work:'', photo:null, label, group:g.group};
 
       const row = document.createElement('div');
       row.className = 'item-row';
@@ -748,11 +876,92 @@ function buildChecklistDom(){
 
       row.appendChild(noteWrap);
 
+      // "Work carried out" — what was actually done (e.g. fitted new brake lining).
+      // Goes on the PDF and into the equipment's history.
+      const workToggle = document.createElement('button');
+      workToggle.type = 'button'; workToggle.className = 'work-toggle'; workToggle.id = 'worktoggle_'+id;
+      workToggle.addEventListener('click', ()=>{
+        const w = document.getElementById('work_'+id);
+        w.classList.toggle('show');
+        if(w.classList.contains('show')) w.querySelector('input').focus();
+        refreshWorkUi(id);
+      });
+      row.appendChild(workToggle);
+      const workWrap = document.createElement('div');
+      workWrap.className = 'item-note work'; workWrap.id = 'work_'+id;
+      const workInput = document.createElement('input');
+      workInput.type = 'text'; workInput.placeholder = 'Work carried out — e.g. fitted new brake lining';
+      workInput.addEventListener('input', e=>{ state.items[id].work = e.target.value; renderFindings(); });
+      workWrap.appendChild(workInput);
+      row.appendChild(workWrap);
+
       checklistContainer.appendChild(row);
     });
   });
 }
 buildChecklistDom();
+
+function refreshWorkUi(id){
+  const it = state.items[id];
+  const toggle = document.getElementById('worktoggle_'+id);
+  const wrap = document.getElementById('work_'+id);
+  if(!it || !toggle || !wrap) return;
+  const eligible = !!it.status && it.status !== 'NA';
+  const has = !!(it.work && String(it.work).trim());
+  toggle.classList.toggle('show', eligible);
+  if(!eligible){ wrap.classList.remove('show'); return; }
+  if(has) wrap.classList.add('show');
+  toggle.textContent = wrap.classList.contains('show') ? '🔧 Work carried out ▾' : '＋ Work carried out';
+}
+function openWork(id){
+  const w = document.getElementById('work_'+id);
+  if(w) w.classList.add('show');
+  refreshWorkUi(id);
+}
+
+// ---------- report numbers ----------
+// KE-YYMMDD-INITIALS-NN: the date, the engineer's initials and a count for that
+// engineer that day. Two phones can never clash unless two engineers share
+// initials AND write reports on the same day. Replaced by one shared running
+// number once OneDrive sync is live.
+function engineerInitials(name){
+  const parts = String(name||'').trim().split(/[^A-Za-z]+/).filter(Boolean);
+  if(!parts.length) return 'XX';
+  return parts.slice(0,3).map(p=>p[0].toUpperCase()).join('');
+}
+// shared running number (KE-0001, KE-0002 …) from the cloud when signed in and online;
+// otherwise the local KE-YYMMDD-INITIALS-NN format so work on site is never held up
+function localReportNo(target){
+  const d = String(target.date || new Date().toISOString().slice(0,10));
+  const base = 'KE-' + d.replace(/-/g,'').slice(2,8) + '-' + engineerInitials(target.engineer);
+  const counters = storeGet('report_counters') || {};
+  let n = (Number(counters[base])||0) + 1;
+  try{
+    eqAllVisits().forEach(v=>{
+      const no = String(v.r.reportNo||'');
+      if(no.indexOf(base+'-') === 0){ const m = /-(\d+)$/.exec(no); if(m) n = Math.max(n, Number(m[1])+1); }
+    });
+  }catch(e){}
+  counters[base] = n;
+  try{ storeSet('report_counters', counters); }catch(e){}
+  return base + '-' + String(n).padStart(2,'0');
+}
+let reportNoBusy = null;
+async function assignReportNo(){
+  if(state.reportNo) return state.reportNo;
+  if(reportNoBusy) return reportNoBusy;
+  const target = state;
+  reportNoBusy = (async()=>{
+    let no = null;
+    if(syncReady()) no = await sbReportNo();
+    if(!no) no = localReportNo(target);
+    if(!target.reportNo) target.reportNo = no;
+    if(target === state){ const el = document.getElementById('f_reportNo'); if(el) el.value = state.reportNo; }
+    return target.reportNo;
+  })().finally(()=>{ reportNoBusy = null; });
+  return reportNoBusy;
+}
+
 
 function setStatus(id, statusKey){
   const item = state.items[id];
@@ -778,6 +987,13 @@ function setStatus(id, statusKey){
 
   const showNote = item.status === 'URGENT' || item.status === 'ATTN' || item.status === 'MONITOR';
   document.getElementById('note_'+id).classList.toggle('show', showNote);
+
+  if(!item.status){
+    item.work = '';
+    const wi = document.querySelector('#work_'+id+' input');
+    if(wi) wi.value = '';
+  }
+  refreshWorkUi(id);
 
   renderFindings();
 }
@@ -869,6 +1085,7 @@ function renderFindings(){
       <div>
         <div style="font-weight:700;font-size:13.5px;">${f.group} — ${f.label}</div>
         <div style="font-size:13px;color:var(--ink-soft);">${f.note ? f.note : '<i>No note added</i>'}</div>
+        ${f.work && String(f.work).trim() ? `<div style="font-size:13px;color:var(--serv);font-weight:700;">🔧 ${wkEsc(f.work)}</div>` : ''}
       </div>`;
     list.appendChild(card);
   });
@@ -877,8 +1094,8 @@ function renderFindings(){
 renderFindings();
 
 // ---------- field bindings ----------
-const fieldMap = {f_reportNo:'reportNo', f_customer:'customer', f_manufacturer:'manufacturer', f_idno:'idno', f_number:'number',
-  f_wll:'wll', f_falls:'falls', f_email:'email', f_customerpin:'customerpin', f_date:'date', f_engineer:'engineer'};
+const fieldMap = {f_customer:'customer', f_manufacturer:'manufacturer', f_idno:'idno', f_number:'number',
+  f_wll:'wll', f_falls:'falls', f_email:'email', f_customerpin:'customerpin', f_date:'date', f_engineer:'engineer', f_reportNo:'reportNo', f_nextdue:'nextdue', f_site:'site'};
 Object.entries(fieldMap).forEach(([elId,key])=>{
   const el = document.getElementById(elId);
   el.value = state[key];
@@ -915,6 +1132,9 @@ function setVisitType(type){
       state.loler.nextexam = d.toISOString().slice(0,10);
       document.getElementById('loler_nextexam').value = state.loler.nextexam;
     }
+    state.nextdue = state.loler.nextexam;
+    document.getElementById('f_nextdue').value = state.nextdue;
+    if(!state.loler.location && state.site){ state.loler.location = state.site; document.getElementById('loler_location').value = state.site; }
     if(!state.loler.signname && state.engineer){ state.loler.signname = state.engineer; document.getElementById('loler_signname').value = state.loler.signname; }
     renderLolerSections();
     restoreSignaturePad();
@@ -956,7 +1176,7 @@ document.querySelectorAll('#equipTypeToggle button').forEach(b=>{
 function lolerSectionText(statusKey){
   const items = Object.values(state.items).filter(i=>i.status===statusKey);
   if(items.length===0) return '';
-  return items.map(f=>`• ${f.group} – ${f.label}${f.note?': '+f.note:' (no note added)'}`).join('\n');
+  return items.map(f=>`• ${f.group} – ${f.label}${f.note?': '+f.note:' (no note added)'}${f.work && String(f.work).trim() ? ' — Work carried out: '+f.work : ''}`).join('\n');
 }
 
 function renderLolerSections(){
@@ -1052,7 +1272,7 @@ function formatDateUK(iso){
 
 function updateTopbarSub(){
   document.getElementById('topbarSub').textContent =
-    (state.reportNo ? state.reportNo + ' · ' : '') + (state.customer || 'New report') + ' · ' + formatDateUK(state.date) + (state.engineer ? ' · '+state.engineer : '');
+    (state.customer || 'New report') + ' · ' + formatDateUK(state.date) + (state.engineer ? ' · '+state.engineer : '');
 }
 
 // ---------- local storage helper (works once this file is opened in a real browser tab) ----------
@@ -1092,9 +1312,8 @@ companySelect.addEventListener('change', ()=>{
   if(!c) return;
   // only the customer's own details carry over — everything crane-specific
   // starts blank since the same customer can have several different cranes
-  state.customer=c.customer||''; state.email=c.email||''; state.customerpin=c.customerpin||''; state.reportNo=''; state._reportId='';
+  state.customer=c.customer||''; state.email=c.email||''; state.customerpin=c.customerpin||'';
   state.manufacturer=''; state.idno=''; state.number=''; state.wll=''; state.falls=''; state.engineer='';
-  document.getElementById('f_reportNo').value=state.reportNo||'';
   document.getElementById('f_customer').value=state.customer;
   document.getElementById('f_email').value=state.email;
   document.getElementById('f_customerpin').value=state.customerpin;
@@ -1124,6 +1343,7 @@ document.getElementById('saveCompanyBtn').addEventListener('click', async ()=>{
   try{
     storeSet('companies', companies);
     companiesCache = await refreshCompanySelect();
+    try{ syncKick(); }catch(e){}
     const idx = companies.findIndex(c => c.customer === newCo.customer);
     if(idx > -1) companySelect.value = idx;
     setStatusMsg(existingIndex > -1 ? 'Saved company details updated.' : 'Company saved to your list.', 'ok');
@@ -1141,77 +1361,414 @@ async function refreshHistorySelect(){
   idx.slice().reverse().forEach(entry=>{
     const o = document.createElement('option');
     o.value = entry.id;
-    o.textContent = `${entry.reportNo ? entry.reportNo+' · ' : ''}${entry.customer || '(unnamed)'} — ${entry.number || 'no crane no.'} — ${formatDateUK(entry.date)}`;
+    o.textContent = `${entry.customer || '(unnamed)'} — ${entry.number || 'no crane no.'} — ${formatDateUK(entry.date)}${entry.reportNo ? ' — '+entry.reportNo : ''}`;
     historySelect.appendChild(o);
   });
 }
-async function migrateReportNumbers(){ try{ const idx=await loadReportIndex(); const used=new Set(idx.map(x=>x.reportNo).filter(Boolean)); let changed=false; for(const e of idx){ const full=storeGet('report_'+e.id); if(full&&!full.reportNo){ const y=(full.date||new Date().toISOString().slice(0,10)).slice(0,4); let n=1,c=''; do{c='KE-'+y+'-'+String(n++).padStart(4,'0');}while(used.has(c)); full.reportNo=c; e.reportNo=c; used.add(c); storeSet('report_'+e.id,full); changed=true; } } if(changed) storeSet('report_index',idx); }catch(e){} }
 refreshHistorySelect();
-migrateReportNumbers().then(refreshHistorySelect);
 
-// ---------- LOLER re-examination reminders ----------
-// Scans every LOLER report saved on this device — this only runs when the
-// app is actually opened, see the chat for what unattended email reminders need.
-async function checkUpcomingLolerReminders(){
-  const idx = await loadReportIndex();
-  const lolerEntries = idx.filter(e => e.visitType === 'LOLER');
-  const today = new Date(); today.setHours(0,0,0,0);
-  const cutoff = new Date(today); cutoff.setDate(cutoff.getDate()+30);
-  const due = [];
-  for(const entry of lolerEntries){
-    const full = storeGet('report_'+entry.id);
-    const nextexam = full && full.loler && full.loler.nextexam;
-    if(!nextexam) continue;
-    const dueDate = new Date(nextexam);
-    if(dueDate <= cutoff){
-      due.push({customer: entry.customer, location: full.loler.location, dueDate, overdue: dueDate < today});
-    }
-  }
-  due.sort((a,b)=> a.dueDate - b.dueDate);
-  const card = document.getElementById('reminderCard');
-  const list = document.getElementById('reminderList');
-  if(due.length === 0){ card.style.display = 'none'; return; }
-  card.style.display = 'block';
-  list.innerHTML = due.map(d=>{
-    const days = Math.round((d.dueDate - today)/86400000);
-    const tag = d.overdue ? `<span class="badge urgent" style="position:static;">OVERDUE</span>` : `<span class="badge monitor" style="position:static;">${days} day${days===1?'':'s'} left</span>`;
-    return `<div class="finding-card ${d.overdue?'':'monitor'}" style="align-items:center;">
-      <div style="flex:1;">
-        <div style="font-weight:700;font-size:13.5px;">${d.customer || '(unnamed customer)'}${d.location?' — '+d.location:''}</div>
-        <div style="font-size:12.5px;color:var(--ink-soft);">Next examination due ${formatDateUK(d.dueDate.toISOString().slice(0,10))}</div>
-      </div>
-      ${tag}
-    </div>`;
-  }).join('');
+// ---------- due dates: service / inspection / LOLER ----------
+// Every report can carry a "next due" date (LOLER reports use their own
+// "Date of Next Examination"). For each piece of equipment we look only at its
+// MOST RECENT visit of each type, so once a job has been redone the old due
+// date stops nagging.
+const DUE_KIND = {Service:'Service', Inspection:'Inspection', LOLER:'LOLER examination'};
+function dueIsoFor(r){
+  const iso = r.visitType === 'LOLER' ? ((r.loler && r.loler.nextexam) || r.nextdue) : r.nextdue;
+  return wkParse(iso) ? String(iso).slice(0,10) : '';
 }
-checkUpcomingLolerReminders();
+function collectDue(){
+  const latest = new Map();
+  eqAllVisits().forEach(v=>{
+    const k = eqKey(v.r) + '|' + (v.r.visitType || 'Service');
+    const prev = latest.get(k);
+    if(!prev || (v.date||'') > (prev.date||'') || ((v.date||'') === (prev.date||'') && v.n >= prev.n)) latest.set(k, v);
+  });
+  const today = new Date(); today.setHours(0,0,0,0);
+  const out = [];
+  latest.forEach(v=>{
+    const iso = dueIsoFor(v.r); if(!iso) return;
+    out.push({v, r:v.r, kind:v.r.visitType || 'Service', iso, days: Math.round((wkParse(iso) - today)/86400000)});
+  });
+  out.sort((a,b)=> a.days - b.days);
+  return out;
+}
+function dueWindowDays(){ return Number(document.getElementById('dueWindow').value) || 30; }
+function ukNum(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||'')); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; }
+function ukFile(iso){ return ukNum(iso).replace(/\//g,'-'); }
+function dueTitleFor(d){
+  return `${DUE_KIND[d.kind] || d.kind} due ${ukNum(d.iso)} – ${d.r.customer || 'customer'}${d.r.number ? ' – '+d.r.number : ''}`;
+}
+function dueDescFor(d){
+  return `${DUE_KIND[d.kind] || d.kind} due on ${formatDateUK(d.iso)} (${ukNum(d.iso)}) for ${d.r.customer || ''}${d.r.number ? ', crane '+d.r.number : ''}${d.r.idno ? ' (ID '+d.r.idno+')' : ''}. Last visit ${formatDateUK(d.v.date)}${d.r.reportNo ? ' ('+d.r.reportNo+')' : ''}. Open the Key Engineering report app, scan the equipment QR label and start a new report.`;
+}
+
+// .ics calendar file — the phone's own Calendar sets the alerts, so they fire
+// even when this app is closed (30 days before, 7 days before, and on the day, all at 9am)
+function icsEsc(t){ return String(t||'').replace(/\\/g,'\\\\').replace(/;/g,'\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n'); }
+function buildIcs(events){
+  const stamp = new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
+  const L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Key Engineering//Crane Report//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
+  events.forEach((e,i)=>{
+    L.push('BEGIN:VEVENT','UID:'+String(e.uid||('ke'+i)).replace(/[^A-Za-z0-9_-]/g,'')+'@keyengineering',
+      'DTSTAMP:'+stamp, 'DTSTART;VALUE=DATE:'+e.iso.replace(/-/g,''), 'DTEND;VALUE=DATE:'+wkAddDays(e.iso,1).replace(/-/g,''),
+      'SUMMARY:'+icsEsc(e.title), 'DESCRIPTION:'+icsEsc(e.desc));
+    [['-P29DT15H','Due in 30 days'],['-P6DT15H','Due in 7 days'],['PT9H','Due today']].forEach(a=>{
+      L.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+icsEsc(e.title+' — '+a[1]),'TRIGGER:'+a[0],'END:VALARM');
+    });
+    L.push('END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  return L.join('\r\n');
+}
+async function deliverIcs(events, filename){
+  if(!events.length){ setStatusMsg('Nothing to add to the calendar yet.', 'err'); return; }
+  const file = new File([buildIcs(events)], filename, {type:'text/calendar'});
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title: filename.replace(/\.ics$/,'').replace(/_/g,' '), text: events.map(e=>e.title).join('\n')});
+      setStatusMsg('Choose Calendar (or Add to Calendar) from the share sheet to save it.', 'ok', 15000);
+      return;
+    }
+  }catch(e){ if(e.name === 'AbortError') return; }
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 2000);
+  setStatusMsg('Calendar file downloaded — open it to add the event(s) to your calendar.', 'ok', 15000);
+}
+
+async function checkUpcomingLolerReminders(){ renderDueDates(); }  // kept under the old name — called after every save
+// ---- notification buttons: Requires repairs / Repairs done / LOLER / Service / Inspection ----
+// Collapsed by default so hundreds of items never fill the screen: each button shows a
+// count, tap one to open just that list.
+const NOTIF_CATS = [
+  {key:'repairs',    icon:'🔧', label:'Requires repairs'},
+  {key:'done',       icon:'✅', label:'Repairs done'},
+  {key:'LOLER',      icon:'📋', label:'LOLER due'},
+  {key:'Service',    icon:'🛠️', label:'Service due'},
+  {key:'Inspection', icon:'🔍', label:'Inspection due'}
+];
+let alertSummary = {attention:0, title:'', body:''}, alertAnnounced = false;
+let notifOpen = null, notifLimit = 25, notifFilter = '', notifData = {due:[], rep:{open:[], done:[]}};
+
+// outstanding repairs = for each item on each piece of equipment, look at the MOST RECENT
+// visit that recorded it: still Urgent / Req's Attn and no work carried out → outstanding.
+// Repairs done = work carried out recorded in the last 30 days.
+// completions are stored separately from the reports (the original report is never altered):
+// key = report (number or id) + item, value = {date, note}
+function compKeyFor(v, it){ return (v.r.reportNo || v.r.cloudId || v.id) + '|' + slug(it.group||'') + '__' + slug(it.label||''); }
+function getCompletions(){ return storeGet('repair_completions') || {}; }
+function collectRepairs(){
+  const comps = getCompletions();
+  const byEq = new Map();
+  eqAllVisits().forEach(v=>{ const k = eqKey(v.r); if(!byEq.has(k)) byEq.set(k, []); byEq.get(k).push(v); });
+  const cutoff = wkAddDays(wkIso(new Date()), -30);
+  const open = [], done = [];
+  byEq.forEach(visits=>{
+    visits.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || a.n - b.n);
+    const latest = new Map();
+    visits.forEach(v=>{
+      wkItems(v.r).filter(Boolean).forEach(it=>{
+        if(!it.label) return;
+        if(it.work && String(it.work).trim() && (v.date||'') >= cutoff && !comps[compKeyFor(v, it)]) done.push({v, r:v.r, it});
+        if(!it.status) return;
+        latest.set(slug(it.group||'')+'__'+slug(it.label), {v, it});
+      });
+    });
+    latest.forEach(x=>{
+      if(x.it.status === 'URGENT' || x.it.status === 'ATTN'){
+        const comp = comps[compKeyFor(x.v, x.it)];
+        if(comp){ if((comp.date||'') >= cutoff) done.push({v:x.v, r:x.v.r, it:x.it, comp, sortDate:comp.date}); }
+        else if(!(x.it.work && String(x.it.work).trim())) open.push({v:x.v, r:x.v.r, it:x.it});
+      }
+    });
+  });
+  open.sort((a,b)=> (a.it.status==='URGENT'?0:1) - (b.it.status==='URGENT'?0:1) || (a.v.date||'').localeCompare(b.v.date||''));
+  done.sort((a,b)=> (b.sortDate||b.v.date||'').localeCompare(a.sortDate||a.v.date||''));
+  return {open, done};
+}
+
+function buildDueRow(d){
+  const cls = d.days < 0 ? 'urgent' : d.days <= 7 ? 'attn' : 'monitor';
+  const tag = d.days < 0 ? `OVERDUE ${-d.days} day${d.days===-1?'':'s'}` : d.days === 0 ? 'DUE TODAY' : `${d.days} day${d.days===1?'':'s'} left`;
+  const row = document.createElement('div');
+  row.className = 'finding-card ' + (cls==='urgent' ? '' : cls);
+  row.style.cssText = 'flex-direction:column;align-items:stretch;gap:8px;';
+  row.innerHTML = `<div style="display:flex;gap:10px;align-items:center;">
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:13.5px;">${wkEsc(d.r.customer || '(unnamed customer)')}${d.r.number ? ' — Crane '+wkEsc(d.r.number) : ''}</div>
+        <div style="font-size:12.5px;color:var(--ink-soft);">${wkEsc(DUE_KIND[d.kind] || d.kind)} due ${wkEsc(formatDateUK(d.iso))}${d.r.site ? ' · '+wkEsc(d.r.site) : ''}</div>
+      </div>
+      <span class="badge ${cls}" style="position:static;white-space:nowrap;">${tag}</span>
+    </div>`;
+  const btns = document.createElement('div'); btns.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+  const cal = document.createElement('button'); cal.type='button'; cal.className='btn-ghost'; cal.textContent='📅 Calendar';
+  cal.addEventListener('click', ()=> deliverIcs([{uid:'due'+d.v.id+d.kind, iso:d.iso, title:dueTitleFor(d), desc:dueDescFor(d)}], 'Due_'+(d.r.customer||'job').replace(/[^a-z0-9]+/gi,'_')+'_'+ukFile(d.iso)+'.ics'));
+  btns.appendChild(cal);
+  if(!Array.isArray(d.r.items)){
+    const go = document.createElement('button'); go.type='button'; go.className='btn-ghost'; go.textContent='▶ Start report';
+    go.addEventListener('click', ()=>{ startFromScannedReport(d.r); setVisitType(d.kind); });
+    btns.appendChild(go);
+  }
+  row.appendChild(btns);
+  return row;
+}
+function buildRepairRow(x, isDone){
+  const r = x.r, it = x.it;
+  const cls = isDone ? '' : (it.status === 'URGENT' ? '' : 'attn');
+  const b = WK_BADGE[it.status] || ['monitor','Done'];
+  const row = document.createElement('div');
+  row.className = 'finding-card ' + cls;
+  row.style.cssText = 'flex-direction:column;align-items:stretch;gap:8px;' + (isDone ? 'border-left-color:var(--serv);background:#f1faf4;' : '');
+  row.innerHTML = `<div style="display:flex;gap:10px;align-items:flex-start;">
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:13.5px;">${wkEsc(r.customer || '(unnamed customer)')}${r.number ? ' — Crane '+wkEsc(r.number) : ''}</div>
+        <div style="font-size:13px;"><b>${wkEsc(it.group||'')} — ${wkEsc(it.label||'')}</b>${it.note ? ': '+wkEsc(it.note) : ''}</div>
+        ${isDone && x.comp ? `<div style="font-size:13px;color:var(--serv);font-weight:700;">✅ Completed ${wkEsc(formatDateUK(x.comp.date))}${x.comp.note ? ' — '+wkEsc(x.comp.note) : ''}</div>` : ''}
+        ${isDone && it.work && String(it.work).trim() ? `<div style="font-size:13px;color:var(--serv);font-weight:700;">🔧 ${wkEsc(it.work)}</div>` : ''}
+        <div style="font-size:12px;color:var(--ink-soft);">Reported ${wkEsc(formatDateUK(x.v.date))} · ${wkEsc(r.visitType||'Service')}${r.reportNo ? ' · '+wkEsc(r.reportNo) : ''}${r.engineer ? ' · '+wkEsc(r.engineer) : ''}</div>
+      </div>
+      ${isDone ? '' : `<span class="badge ${b[0]}" style="position:static;white-space:nowrap;">${b[1]}</span>`}
+    </div>`;
+  const btns = document.createElement('div'); btns.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+
+  if(!isDone){
+    // ✅ Completed — stamps today's date automatically; asks what was done (optional) so it can't be tapped by accident
+    const comp = document.createElement('button'); comp.type='button'; comp.className='btn-ghost';
+    comp.textContent = '✅ Completed';
+    comp.style.cssText = 'border-color:var(--serv);color:var(--serv);font-weight:800;';
+    comp.addEventListener('click', ()=>{
+      comp.style.display = 'none';
+      const box = document.createElement('div'); box.style.cssText = 'display:flex;flex-direction:column;gap:6px;width:100%;';
+      const today = wkIso(new Date());
+      box.innerHTML = `<div style="font-size:12.5px;color:var(--ink-soft);">Completed <b>${wkEsc(formatDateUK(today))}</b> — what was done? (optional)</div>`;
+      const inp = document.createElement('input'); inp.type='text'; inp.placeholder = 'e.g. Fitted new brake lining';
+      const rowB = document.createElement('div'); rowB.style.cssText = 'display:flex;gap:8px;';
+      const ok = document.createElement('button'); ok.type='button'; ok.className='btn-ghost'; ok.textContent='✅ Confirm completed';
+      ok.style.cssText = 'background:var(--serv);color:#fff;border-color:var(--serv);font-weight:800;flex:1;';
+      const no = document.createElement('button'); no.type='button'; no.className='btn-ghost'; no.textContent='Cancel';
+      no.addEventListener('click', ()=>{ box.remove(); comp.style.display = ''; });
+      ok.addEventListener('click', ()=>{
+        try{
+          const comps = getCompletions();
+          comps[compKeyFor(x.v, it)] = {date: today, note: inp.value.trim()};
+          storeSet('repair_completions', comps);
+        }catch(e){ setStatusMsg('Could not save: '+e.message, 'err'); return; }
+        setStatusMsg('Marked completed on '+formatDateUK(today)+'.', 'ok');
+        renderDueDates();
+        try{ syncKick(); }catch(e){}
+        try{ renderEqResults(); }catch(e){}
+      });
+      rowB.appendChild(ok); rowB.appendChild(no);
+      box.appendChild(inp); box.appendChild(rowB);
+      btns.appendChild(box);
+      inp.focus();
+    });
+    btns.appendChild(comp);
+    if(!Array.isArray(r.items)){
+      const go = document.createElement('button'); go.type='button'; go.className='btn-ghost'; go.textContent='▶ Start report';
+      go.addEventListener('click', ()=> startFromScannedReport(r));
+      btns.appendChild(go);
+    }
+  } else if(x.comp){
+    const re = document.createElement('button'); re.type='button'; re.className='btn-ghost'; re.textContent='↩ Reopen';
+    re.addEventListener('click', ()=>{
+      try{ const comps = getCompletions(); delete comps[compKeyFor(x.v, it)]; storeSet('repair_completions', comps); }catch(e){ setStatusMsg('Could not save: '+e.message, 'err'); return; }
+      setStatusMsg('Repair reopened.', 'ok');
+      renderDueDates();
+      try{ syncKick(); }catch(e){}
+      try{ renderEqResults(); }catch(e){}
+    });
+    btns.appendChild(re);
+  }
+  const h = document.createElement('button'); h.type='button'; h.className='btn-ghost'; h.textContent='🕘 History';
+  h.addEventListener('click', ()=> showEquipHistory(r.customer||'', r.number||'', r.idno||''));
+  btns.appendChild(h);
+  row.appendChild(btns);
+  return row;
+}
+function notifRowText(cat, x){
+  const r = x.r;
+  const base = [r.customer, r.number, r.idno, r.site, r.engineer, r.reportNo].join(' ');
+  return (base + ' ' + (x.it ? [x.it.group, x.it.label, x.it.note, x.it.work, x.comp && x.comp.note].join(' ') : (x.kind||''))).toLowerCase();
+}
+function renderNotifPanel(){
+  const list = document.getElementById('reminderList');
+  list.innerHTML = '';
+  if(!notifOpen) return;
+  const cat = NOTIF_CATS.find(c=> c.key === notifOpen);
+  let items = notifOpen === 'repairs' ? notifData.rep.open : notifOpen === 'done' ? notifData.rep.done : notifData.due.filter(d=> d.kind === notifOpen);
+  const head = document.createElement('div');
+  head.innerHTML = `<div style="font-weight:800;font-size:14.5px;margin-bottom:6px;">${cat.icon} ${cat.label} — ${items.length}</div>`;
+  list.appendChild(head);
+  if(!items.length){
+    const none = document.createElement('p'); none.className = 'finding-empty';
+    none.textContent = notifOpen === 'done' ? 'No repairs recorded as done in the last 30 days.' : notifOpen === 'repairs' ? 'No outstanding repairs.' : 'Nothing due in this window.';
+    list.appendChild(none); return;
+  }
+  if(items.length > 8){
+    const f = document.createElement('input'); f.type = 'search'; f.placeholder = 'Filter this list — customer, crane, site, engineer…'; f.value = notifFilter; f.style.marginBottom = '8px';
+    f.addEventListener('input', ()=>{ notifFilter = f.value; notifLimit = 25; renderNotifPanel(); const nf = document.querySelector('#reminderList input[type=search]'); if(nf){ nf.focus(); nf.setSelectionRange(nf.value.length, nf.value.length); } });
+    list.appendChild(f);
+  }
+  const tokens = notifFilter.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if(tokens.length) items = items.filter(x=>{ const t = notifRowText(notifOpen, x); return tokens.every(k=> t.includes(k)); });
+  items.slice(0, notifLimit).forEach(x=> list.appendChild(
+    (notifOpen === 'repairs' || notifOpen === 'done') ? buildRepairRow(x, notifOpen === 'done') : buildDueRow(x)));
+  if(tokens.length && !items.length){ const n = document.createElement('p'); n.className='finding-empty'; n.textContent='Nothing matches that filter.'; list.appendChild(n); }
+  if(items.length > notifLimit){
+    const more = document.createElement('button'); more.type='button'; more.className='btn-ghost'; more.style.marginTop='6px';
+    more.textContent = `Show 25 more (${items.length - notifLimit} left)`;
+    more.addEventListener('click', ()=>{ notifLimit += 25; renderNotifPanel(); });
+    list.appendChild(more);
+  }
+}
+function renderDueDates(){
+  const card = document.getElementById('reminderCard');
+  const win = dueWindowDays();
+  const due = collectDue().filter(d=> d.days <= win);
+  const rep = collectRepairs();
+  notifData = {due, rep};
+  const counts = {repairs:rep.open.length, done:rep.done.length, LOLER:0, Service:0, Inspection:0};
+  const overdue = {LOLER:0, Service:0, Inspection:0};
+  due.forEach(d=>{ counts[d.kind] = (counts[d.kind]||0) + 1; if(d.days < 0) overdue[d.kind] = (overdue[d.kind]||0) + 1; });
+  const urgentRepairs = rep.open.filter(x=> x.it.status === 'URGENT').length;
+  const attention = counts.repairs + due.length;
+  const sumLines = [];
+  if(counts.repairs) sumLines.push(`🔧 ${counts.repairs} repair${counts.repairs===1?'':'s'} outstanding${urgentRepairs ? ' ('+urgentRepairs+' urgent)' : ''}`);
+  [['LOLER','📋 LOLER'],['Service','🛠️ Service'],['Inspection','🔍 Inspection']].forEach(([k,l])=>{
+    if(counts[k]) sumLines.push(`${l} due: ${counts[k]}${overdue[k] ? ' ('+overdue[k]+' overdue)' : ''}`);
+  });
+  alertSummary = {attention, title:`Key Engineering — ${attention} need attention`, body:sumLines.join('\n')};
+  if(!alertAnnounced){ alertAnnounced = true; if(attention && alertWanted()) alertShow(alertSummary.title, alertSummary.body).catch(()=>{}); }
+  try{ if(navigator.setAppBadge){ attention ? navigator.setAppBadge(attention) : navigator.clearAppBadge(); } }catch(e){}
+  const total = attention + counts.done;
+  if(!total){ card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  document.getElementById('dueTitle').textContent = '🔔 Notifications' + (attention ? ' — '+attention+' need attention' : '');
+  const grid = document.getElementById('notifGrid');
+  grid.innerHTML = '';
+  NOTIF_CATS.forEach(c=>{
+    const n = counts[c.key] || 0;
+    const hot = c.key === 'repairs' ? urgentRepairs > 0 : (overdue[c.key] || 0) > 0;
+    const state_ = !n ? 'zero' : c.key === 'done' ? 'good' : hot ? 'hot' : 'warm';
+    const sub = c.key === 'repairs' ? (urgentRepairs ? urgentRepairs+' urgent' : n ? 'need booking in' : 'all clear')
+              : c.key === 'done' ? 'last 30 days'
+              : (overdue[c.key] ? overdue[c.key]+' overdue' : n ? 'coming up' : 'none due');
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'notif-btn ' + state_ + (notifOpen === c.key ? ' open' : '');
+    b.innerHTML = `<span class="nb-count">${n}</span><span class="nb-icon">${c.icon}</span><span class="nb-label">${c.label}</span><span class="nb-sub">${sub}</span>`;
+    b.addEventListener('click', ()=>{ notifOpen = (notifOpen === c.key) ? null : c.key; notifLimit = 25; notifFilter = ''; renderDueDates(); });
+    grid.appendChild(b);
+  });
+  renderNotifPanel();
+}
+// ---- alert on this iPad each time the app is opened ----
+// Needs the app added to the Home Screen (iPadOS 16.4+) and a small helper file, sw.js,
+// next to index.html. The notification is raised by the app itself when it opens.
+const ALERT_OK = ('serviceWorker' in navigator) && ('Notification' in window);
+function alertWanted(){ try{ return ALERT_OK && Notification.permission === 'granted' && storeGet('alerts_on') === true; }catch(e){ return false; } }
+async function alertShow(title, body){
+  await navigator.serviceWorker.register('sw.js');
+  const reg = await navigator.serviceWorker.ready;
+  await reg.showNotification(title, {body, tag:'ke-due', icon:'icon-180.png'});
+  try{ if(navigator.setAppBadge && alertSummary.attention) navigator.setAppBadge(alertSummary.attention); }catch(e){}
+}
+function refreshAlertUi(){
+  const msg = document.getElementById('alertMsg');
+  const on = document.getElementById('btnAlertOn'), test = document.getElementById('btnAlertTest'), off = document.getElementById('btnAlertOff');
+  on.style.display = test.style.display = off.style.display = 'none';
+  if(!ALERT_OK){
+    msg.innerHTML = '🔔 To get an alert on your iPad when you open the app, add it to your Home Screen (Share ▸ Add to Home Screen) and open it from that icon.';
+    return;
+  }
+  if(Notification.permission === 'denied'){
+    msg.innerHTML = '🔕 Alerts are blocked for this app. Turn them on in iPad Settings ▸ Notifications ▸ Key Engineering (or the app’s name).';
+    return;
+  }
+  if(alertWanted()){
+    msg.innerHTML = '🔔 <b>iPad alerts are on</b> — you’ll get a notification each time you open the app and something needs attention.';
+    test.style.display = off.style.display = '';
+  } else {
+    msg.innerHTML = '🔔 Get a notification on this iPad each time you open the app and something is due or needs repairing.';
+    on.style.display = '';
+  }
+}
+document.getElementById('btnAlertOn').addEventListener('click', async ()=>{
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm === 'granted'){
+      storeSet('alerts_on', true);
+      await alertShow('Key Engineering', 'Alerts are on. You’ll get one like this each time you open the app and something needs attention.');
+      setStatusMsg('iPad alerts turned on.', 'ok');
+    } else {
+      setStatusMsg('Alerts weren’t allowed. You can change this in iPad Settings ▸ Notifications.', 'err', 12000);
+    }
+  }catch(e){ setStatusMsg('Could not turn on alerts: '+e.message, 'err', 12000); }
+  refreshAlertUi();
+});
+document.getElementById('btnAlertTest').addEventListener('click', async ()=>{
+  try{
+    await alertShow(alertSummary.attention ? alertSummary.title : 'Key Engineering', alertSummary.attention ? alertSummary.body : 'Test alert — alerts are working. Nothing needs attention right now.');
+    setStatusMsg('Test alert sent — check the top of the screen or Notification Centre.', 'ok', 10000);
+  }catch(e){ setStatusMsg('Could not send the alert: '+e.message, 'err', 12000); }
+});
+document.getElementById('btnAlertOff').addEventListener('click', ()=>{
+  try{ storeSet('alerts_on', false); }catch(e){}
+  refreshAlertUi();
+});
+refreshAlertUi();
+
+try{ document.getElementById('dueWindow').value = String(storeGet('due_window') || 30); }catch(e){}
+document.getElementById('dueWindow').addEventListener('change', ()=>{ try{ storeSet('due_window', dueWindowDays()); }catch(e){} renderDueDates(); });
+window.addEventListener('load', ()=>{ try{ renderDueDates(); }catch(e){} });
+
+document.getElementById('btnDueCalAll').addEventListener('click', ()=>{
+  const due = collectDue().filter(d=> d.days <= dueWindowDays() || true); // everything upcoming, not just the shown window
+  deliverIcs(due.filter(d=> d.days >= -30).map(d=>({uid:'due'+d.v.id+d.kind, iso:d.iso, title:dueTitleFor(d), desc:dueDescFor(d)})), 'Key_Engineering_due_dates.ics');
+});
 
 const reminderEmailInput = document.getElementById('reminderEmail');
 reminderEmailInput.value = storeGet('reminder_email') || '';
 reminderEmailInput.addEventListener('input', ()=> storeSet('reminder_email', reminderEmailInput.value));
 
-document.getElementById('btnEmailReminders').addEventListener('click', async ()=>{
-  const idx = await loadReportIndex();
-  const lolerEntries = idx.filter(e => e.visitType === 'LOLER');
-  const today = new Date(); today.setHours(0,0,0,0);
-  const cutoff = new Date(today); cutoff.setDate(cutoff.getDate()+30);
-  const lines = [];
-  for(const entry of lolerEntries){
-    const full = storeGet('report_'+entry.id);
-    const nextexam = full && full.loler && full.loler.nextexam;
-    if(!nextexam) continue;
-    const dueDate = new Date(nextexam);
-    if(dueDate <= cutoff){
-      lines.push(`- ${entry.customer||'(unnamed)'}${full.loler.location?' — '+full.loler.location:''}: due ${formatDateUK(nextexam)}${dueDate<today?' (OVERDUE)':''}`);
-    }
-  }
-  if(lines.length===0){ setStatusMsg('Nothing due within 30 days.', 'ok'); return; }
+document.getElementById('btnEmailReminders').addEventListener('click', ()=>{
+  const win = dueWindowDays();
+  const due = collectDue().filter(d=> d.days <= win);
+  if(!due.length){ setStatusMsg('Nothing due within '+win+' days.', 'ok'); return; }
   const to = reminderEmailInput.value.trim();
-  if(!to){ setStatusMsg('Add your email address above first.', 'err'); return; }
-  const subject = 'LOLER re-examinations due soon';
-  const body = 'Equipment due for LOLER thorough examination within 30 days:\n\n' + lines.join('\n');
+  if(!to){ setStatusMsg('Add your email address in the box above first.', 'err'); return; }
+  const lines = due.map(d=> `- ${d.r.customer||'(unnamed)'}${d.r.number?' — Crane '+d.r.number:''}: ${DUE_KIND[d.kind]||d.kind} due ${formatDateUK(d.iso)}${d.days<0?' (OVERDUE '+(-d.days)+' days)':' ('+d.days+' days)'}`);
+  const subject = 'Key Engineering — work due within '+win+' days';
+  const body = 'Services, inspections and LOLER examinations due within '+win+' days:\n\n' + lines.join('\n');
   window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  setStatusMsg('Opening your mail app with the reminder list.', 'ok');
+  setStatusMsg('Opening your mail app with the list.', 'ok');
+});
+
+// next-due field: quick buttons, LOLER sync, calendar
+function setNextDue(iso){
+  state.nextdue = iso;
+  document.getElementById('f_nextdue').value = iso;
+  if(state.visitType === 'LOLER'){ state.loler.nextexam = iso; document.getElementById('loler_nextexam').value = iso; }
+}
+document.querySelectorAll('#dueQuick button').forEach(b=> b.addEventListener('click', ()=>{
+  const d = wkParse(state.date) || new Date();
+  d.setMonth(d.getMonth() + Number(b.dataset.m));
+  setNextDue(wkIso(d));
+  setStatusMsg('Next due date set to '+formatDateUK(state.nextdue)+'.', 'ok');
+}));
+document.getElementById('f_nextdue').addEventListener('input', ()=>{
+  if(state.visitType === 'LOLER'){ state.loler.nextexam = state.nextdue; document.getElementById('loler_nextexam').value = state.nextdue; }
+});
+document.getElementById('loler_nextexam').addEventListener('input', ()=>{
+  state.nextdue = state.loler.nextexam || '';
+  document.getElementById('f_nextdue').value = state.nextdue;
+});
+document.getElementById('btnDueCal').addEventListener('click', ()=>{
+  if(!wkParse(state.nextdue)){ setStatusMsg('Set a next due date first (or tap 3 / 6 / 12 months).', 'err'); return; }
+  const d = {kind:state.visitType, r:state, v:{id:'cur',date:state.date}, iso:state.nextdue};
+  deliverIcs([{uid:'due'+(state.reportNo||Date.now())+state.visitType, iso:state.nextdue, title:dueTitleFor(d), desc:dueDescFor(d)}], 'Due_'+(state.customer||'job').replace(/[^a-z0-9]+/gi,'_')+'_'+ukFile(state.nextdue)+'.ics');
 });
 
 historySelect.addEventListener('change', async ()=>{
@@ -1219,6 +1776,7 @@ historySelect.addEventListener('change', async ()=>{
   try{
     const loaded = storeGet('report_'+historySelect.value);
     if(!loaded) return;
+    if(String(historySelect.value).indexOf('imp_') === 0) loaded.cloudId = ''; // a copy of someone else's report saves as its own record
     applyState(loaded);
     setStatusMsg('Report loaded.', 'ok');
   }catch(e){ setStatusMsg('Could not load report: '+e.message, 'err'); }
@@ -1226,6 +1784,10 @@ historySelect.addEventListener('change', async ()=>{
 
 function applyState(loaded){
   state = loaded;
+  if(state.reportNo === undefined) state.reportNo = '';
+  if(state.nextdue === undefined) state.nextdue = '';
+  if(state.site === undefined) state.site = '';
+  if(state.cloudId === undefined) state.cloudId = '';
   if(!state.loler) state.loler = {location:'', makeserial:'', swl:'', description:'', prevexam:'', nextexam:'', ourref:'', extraA:'', extraB:'', extraC:'', signname:'', signature:null, equipmentType:'CRANE'};
   if(!state.loler.equipmentType) state.loler.equipmentType = 'CRANE';
   Object.entries(fieldMap).forEach(([elId,key])=> document.getElementById(elId).value = state[key]||'');
@@ -1243,6 +1805,10 @@ function applyState(loaded){
     document.getElementById('note_'+id).classList.remove('show');
     const noteInput = document.getElementById('note_'+id).querySelector('input');
     noteInput.value = it.note || '';
+    const workInput = document.querySelector('#work_'+id+' input');
+    if(workInput) workInput.value = it.work || '';
+    const workWrapEl = document.getElementById('work_'+id);
+    if(workWrapEl) workWrapEl.classList.remove('show');
     if(it.status){
       const target = it.status;
       state.items[id].status = null; // setStatus toggles, so clear first then apply once
@@ -1252,44 +1818,39 @@ function applyState(loaded){
     state.items[id].photo = it.photo || null;
     const photoContainer = document.getElementById('photo_'+id);
     if(photoContainer) renderPhotoRow(id, photoContainer);
+    refreshWorkUi(id);
   });
   updateTopbarSub();
 }
 
 // ---------- status message ----------
 let statusTimer;
-function setStatusMsg(msg, type){
+function setStatusMsg(msg, type, ms){
   const el = document.getElementById('statusMsg');
   el.textContent = msg;
   el.className = 'status-msg no-print' + (type ? ' '+type : '');
   clearTimeout(statusTimer);
-  statusTimer = setTimeout(()=>{ el.textContent=''; el.className='status-msg no-print'; }, 6000);
+  statusTimer = setTimeout(()=>{ el.textContent=''; el.className='status-msg no-print'; }, ms || 6000);
 }
 
 // ---------- save report ----------
-function nextReportNumber(existing){
-  const year = (state.date || new Date().toISOString().slice(0,10)).slice(0,4);
-  let max = 0;
-  (existing||[]).forEach(x=>{ const m=String(x.reportNo||'').match(new RegExp('^KE-'+year+'-(\\d+)$')); if(m) max=Math.max(max,Number(m[1])); });
-  return 'KE-'+year+'-'+String(max+1).padStart(4,'0');
-}
 async function saveReport(){
   if(!state.customer){ setStatusMsg('Add a customer name before saving.', 'err'); return false; }
+  await assignReportNo();
+  if(!state.cloudId) state.cloudId = newCloudId();
+  const reportId = Date.now().toString();
   try{
-    let idx = await loadReportIndex();
-    const reportId = state._reportId || ('r_'+Date.now()+'_'+Math.random().toString(36).slice(2,8));
-    if(!state.reportNo) state.reportNo = nextReportNumber(idx);
-    state._reportId = reportId;
     storeSet('report_'+reportId, state);
-    const entry={id:reportId,reportNo:state.reportNo,customer:state.customer,idno:state.idno,number:state.number,date:state.date,visitType:state.visitType,engineer:state.engineer};
-    const pos=idx.findIndex(x=>x&&x.id===reportId); if(pos>=0) idx[pos]=entry; else idx.push(entry);
-    storeSet('report_index',idx);
-    document.getElementById('f_reportNo').value=state.reportNo; updateTopbarSub();
-    await refreshHistorySelect(); await checkUpcomingLolerReminders();
-    try{ wkRender(); }catch(e){}
-    try{ syncAfterSave({id:reportId,r:state}); }catch(e){}
+    const idx = await loadReportIndex();
+    idx.push({id:reportId, customer:state.customer, idno:state.idno, number:state.number, date:state.date, visitType:state.visitType, reportNo:state.reportNo});
+    storeSet('report_index', idx);
+    await refreshHistorySelect();
+    try{ renderEqResults(); }catch(e){ /* history is a bonus — never block a save */ }
+    await checkUpcomingLolerReminders();
+    try{ wkRender(); }catch(e){ /* weekly list is a bonus — never block a save */ }
+    try{ syncAfterSave({id:reportId, r:state}); }catch(e){ /* sync must never block a save */ }
     return true;
-  }catch(e){ setStatusMsg('Could not save report: '+(e.message||e), 'err'); return false; }
+  }catch(e){ setStatusMsg('Could not save report: '+e.message, 'err'); return false; }
 }
 
 document.getElementById('btnSave').addEventListener('click', async ()=>{
@@ -1301,17 +1862,151 @@ document.getElementById('btnSave').addEventListener('click', async ()=>{
 function freshState(keepEngineer){
   const items = {};
   ITEM_IDS.forEach(id=>{
-    items[id] = {status:null, note:'', photo:null, label: state.items[id].label, group: state.items[id].group};
+    items[id] = {status:null, note:'', work:'', photo:null, label: state.items[id].label, group: state.items[id].group};
   });
   return {
     customer:'', manufacturer:'', idno:'', number:'', wll:'', falls:'', email:'', customerpin:'',
     date: new Date().toISOString().slice(0,10),
     engineer: keepEngineer ? state.engineer : '',
-    visitType:'Service', notes:'',
+    visitType:'Service', notes:'', reportNo:'', nextdue:'', site:'', cloudId:'',
     loler:{location:'', makeserial:'', swl:'', description:'', prevexam:'', nextexam:'', ourref:'', extraA:'', extraB:'', extraC:'', signname:'', signature:null, equipmentType:'CRANE'},
     items
   };
 }
+
+// ---------- equipment history ----------
+// One timeline per piece of equipment (customer + crane no. + ID no.), built from
+// every report on this device — including ones added from other phones.
+function eqKey(r){ return [r.customer, r.number, r.idno].map(v=>String(v||'').trim().toLowerCase()).join('|'); }
+function eqAllVisits(){
+  const best = new Map();
+  wkAllReports().forEach(x=>{
+    const r = x.r; if(!r) return;
+    const key = r.reportNo ? 'no:'+r.reportNo : 'k:'+wkKey(x);
+    const cand = {id:x.id, r, src:x.src, date:wkReportDate(x), n:Number(String(x.id).replace(/^imp_/,''))||0};
+    const prev = best.get(key);
+    if(!prev || (cand.src==='local' && prev.src!=='local') || (cand.src===prev.src && cand.n >= prev.n)) best.set(key, cand);
+  });
+  return [...best.values()];
+}
+// everything a visit can be found by: crane / ID / customer / site / engineer /
+// report no. / visit type / date (typed any usual way) / flagged findings and work done
+function eqDateText(iso){
+  const d = wkParse(iso); if(!d) return '';
+  const full = ['January','February','March','April','May','June','July','August','September','October','November','December'][d.getMonth()];
+  const dd = String(d.getDate()).padStart(2,'0'), mm = String(d.getMonth()+1).padStart(2,'0');
+  return [iso, `${dd}/${mm}/${d.getFullYear()}`, `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`, `${d.getDate()} ${full} ${d.getFullYear()}`, `${full} ${d.getFullYear()}`].join(' ');
+}
+function eqHay(v){
+  const r = v.r;
+  const text = wkItems(r).filter(Boolean).map(i=> [i.note, i.work, (WK_RANK[i.status] !== undefined || i.work) ? i.label : ''].join(' ')).join(' ');
+  return [r.customer, r.number, r.idno, r.manufacturer, r.reportNo, r.engineer, r.site, r.loler && r.loler.location,
+          r.visitType, eqDateText(v.date), text].join(' ').toLowerCase();
+}
+function eqGroups(query){
+  const q = String(query||'').trim().toLowerCase();
+  const tokens = q ? q.split(/\s+/) : [];
+  const groups = new Map();
+  eqAllVisits().forEach(v=>{
+    const r = v.r;
+    const hay = eqHay(v);
+    if(!tokens.every(t=> hay.includes(t))) return;
+    const k = eqKey(r);
+    if(!groups.has(k)) groups.set(k, {key:k, customer:r.customer||'', number:r.number||'', idno:r.idno||'', visits:[]});
+    groups.get(k).visits.push(v);
+  });
+  const out = [...groups.values()];
+  out.forEach(g=> g.visits.sort((a,b)=> (b.date||'').localeCompare(a.date||'') || b.n - a.n));
+  out.sort((a,b)=> (b.visits[0].date||'').localeCompare(a.visits[0].date||''));
+  return out;
+}
+function eqLabel(g){
+  return (g.customer||'(unnamed)') + ' — ' + (g.number ? 'Crane '+g.number : 'no crane no.') + (g.idno ? ' (ID '+g.idno+')' : '');
+}
+function renderEqResults(){
+  const box = document.getElementById('eqResults');
+  const tl = document.getElementById('eqTimeline');
+  if(!box || !tl) return;
+  const q = document.getElementById('eqSearch').value;
+  const groups = eqGroups(q);
+  box.innerHTML = ''; tl.innerHTML = '';
+  if(!groups.length){
+    box.innerHTML = '<p class="finding-empty">' + (q.trim() ? 'Nothing found for that search.' : 'No saved reports yet — history builds up as you save reports.') + '</p>';
+    return;
+  }
+  if(groups.length === 1 && q.trim()){ renderEqTimeline(groups[0]); return; }
+  groups.slice(0,30).forEach(g=>{
+    const last = g.visits[0];
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn-ghost';
+    b.style.cssText = 'display:block;width:100%;text-align:left;margin-bottom:6px;';
+    b.innerHTML = `<div style="font-weight:700;">${wkEsc(eqLabel(g))}</div><div style="font-size:12px;font-weight:400;color:var(--ink-soft);">${g.visits.length} visit${g.visits.length===1?'':'s'} · last ${wkEsc(formatDateUK(last.date))} (${wkEsc(last.r.visitType||'Service')})</div>`;
+    b.addEventListener('click', ()=> renderEqTimeline(g));
+    box.appendChild(b);
+  });
+  if(groups.length > 30){ const m = document.createElement('p'); m.className='note-inline'; m.textContent = 'Showing the 30 most recent — type to narrow it down.'; box.appendChild(m); }
+}
+function renderEqTimeline(g){
+  const box = document.getElementById('eqTimeline');
+  box.innerHTML = '';
+  const head = document.createElement('div');
+  head.innerHTML = `<div style="font-weight:800;font-size:15px;margin:14px 0 2px;">${wkEsc(eqLabel(g))}</div><p class="note-inline" style="margin:0 0 4px;">${g.visits.length} visit${g.visits.length===1?'':'s'} on record, newest first.</p>`;
+  box.appendChild(head);
+  g.visits.forEach(v=>{
+    const r = v.r;
+    const items = wkItems(r).filter(Boolean);
+    const flagged = items.filter(i=> WK_RANK[i.status] !== undefined);
+    const otherWork = items.filter(i=> WK_RANK[i.status] === undefined && i.work && String(i.work).trim());
+    const card = document.createElement('div');
+    card.className = 'finding-card';
+    card.style.cssText = 'flex-direction:column;align-items:stretch;gap:6px;margin-top:8px;';
+    let html = `<div style="font-weight:800;font-size:13.5px;">${wkEsc(formatDateUK(v.date))} · ${wkEsc(r.visitType||'Service')}${r.reportNo ? ' · '+wkEsc(r.reportNo) : ''}</div>`;
+    html += `<div style="font-size:12px;color:var(--ink-soft);">Engineer: ${wkEsc(r.engineer||'—')}</div>`;
+    flagged.forEach(i=>{
+      const b = WK_BADGE[i.status];
+      html += `<div style="font-size:13px;"><span class="badge ${b[0]}">${b[1]}</span> <b>${wkEsc(i.group)} — ${wkEsc(i.label)}</b>${i.note ? ': '+wkEsc(i.note) : ''}`;
+      if(i.work && String(i.work).trim()) html += `<div style="color:var(--serv);font-weight:700;">🔧 ${wkEsc(i.work)}</div>`;
+      const c = getCompletions()[compKeyFor(v, i)];
+      if(c) html += `<div style="color:var(--serv);font-weight:700;">✅ Completed ${wkEsc(formatDateUK(c.date))}${c.note ? ' — '+wkEsc(c.note) : ''}</div>`;
+      html += `</div>`;
+    });
+    otherWork.forEach(i=>{
+      html += `<div style="font-size:13px;color:var(--serv);font-weight:700;">🔧 ${wkEsc(i.group)} — ${wkEsc(i.label)}: ${wkEsc(i.work)}</div>`;
+    });
+    if(!flagged.length && !otherWork.length) html += `<div style="font-size:12.5px;color:var(--ink-soft);">Nothing flagged on this visit.</div>`;
+    if(r.notes && String(r.notes).trim()){
+      const n = String(r.notes).trim();
+      html += `<div style="font-size:12.5px;color:var(--ink-soft);">Notes: ${wkEsc(n.length>300 ? n.slice(0,300)+'…' : n)}</div>`;
+    }
+    card.innerHTML = html;
+    if(!Array.isArray(r.items)){
+      const pb = document.createElement('button');
+      pb.type = 'button'; pb.className = 'btn-ghost'; pb.style.alignSelf = 'flex-start';
+      pb.textContent = '👁️ View this report (PDF)';
+      pb.addEventListener('click', ()=> viewScannedReportPdf(r));
+      card.appendChild(pb);
+    }
+    box.appendChild(card);
+  });
+}
+function setEqOpen(open){
+  document.getElementById('eqBody').style.display = open ? 'block' : 'none';
+  document.getElementById('btnEqToggle').textContent = open ? '▲ Hide Equipment History' : '🕘 Show Equipment History';
+}
+document.getElementById('btnEqToggle').addEventListener('click', ()=>{
+  setEqOpen(document.getElementById('eqBody').style.display === 'none');
+});
+function showEquipHistory(customer, number, idno){
+  setEqOpen(true);
+  const input = document.getElementById('eqSearch');
+  input.value = [customer, number].filter(Boolean).join(' ');
+  renderEqResults();
+  const g = eqGroups('').find(x=> x.key === eqKey({customer, number, idno}));
+  if(g) renderEqTimeline(g);
+  document.getElementById('equipHistoryCard').scrollIntoView({behavior:'smooth', block:'start'});
+}
+document.getElementById('eqSearch').addEventListener('input', renderEqResults);
+window.addEventListener('load', ()=>{ try{ renderEqResults(); }catch(e){} });
 
 // ---------- scan previous report (QR) ----------
 let scanStream = null, scanRAF = null;
@@ -1410,6 +2105,11 @@ function handleScannedPayload(text){
   startBtn.textContent = '✅ Start New Report From This';
   startBtn.addEventListener('click', ()=> startFromScannedReport(r));
   btnRow.appendChild(viewBtn); btnRow.appendChild(startBtn);
+  const histBtn = document.createElement('button');
+  histBtn.type = 'button'; histBtn.className = 'action-btn outline'; histBtn.style.flex = '1 1 100%';
+  histBtn.textContent = '🕘 View Equipment History';
+  histBtn.addEventListener('click', ()=> showEquipHistory(r.customer||'', r.number||'', r.idno||''));
+  btnRow.appendChild(histBtn);
   box.appendChild(btnRow);
 }
 
@@ -1436,7 +2136,7 @@ async function viewScannedReportPdf(r){
 function startFromScannedReport(r){
   const fresh = freshState(false);
   fresh.customer = r.customer||''; fresh.manufacturer = r.manufacturer||''; fresh.idno = r.idno||'';
-  fresh.number = r.number||''; fresh.wll = r.wll||''; fresh.falls = r.falls||''; fresh.email = r.email||'';
+  fresh.number = r.number||''; fresh.site = r.site||''; fresh.wll = r.wll||''; fresh.falls = r.falls||''; fresh.email = r.email||'';
   applyState(fresh);
   setEquipmentType((r.loler && r.loler.equipmentType) || 'CRANE', {restoring:true});
   companySelect.value = '';
@@ -1501,9 +2201,10 @@ function renderCarryForwardPanel(r){
         if(input){ input.value = resolvedNote; state.items[id].note = resolvedNote; }
         noteWrap.classList.add('show');
       }
+      openWork(id);
       row.style.opacity = '0.55';
       stillBtn.disabled = true; fixedBtn.disabled = true;
-      setStatusMsg('Marked as fixed.', 'ok');
+      setStatusMsg('Marked as fixed — add what was done in the "Work carried out" box on that checklist item.', 'ok', 12000);
     });
     btns.appendChild(stillBtn); btns.appendChild(fixedBtn);
     row.appendChild(btns);
@@ -1535,8 +2236,7 @@ document.getElementById('btnPrint').addEventListener('click', async ()=>{
   const btn = document.getElementById('btnPrint');
   btn.disabled = true; btn.textContent = 'Preparing…';
   try{
-    if(!state.customer) throw new Error('Add a customer before printing the report.');
-    if(!state._reportId || !state.reportNo){ const ok=await saveReport(); if(!ok) throw new Error('The report could not be saved before printing.'); }
+    await assignReportNo();
     const doc = state.visitType === 'LOLER' ? await buildLolerPdfBlob() : await buildPdfBlob();
     const blobUrl = doc.output('bloburl');
     const w = window.open(blobUrl, '_blank');
@@ -1650,6 +2350,8 @@ async function buildPdfBlob(){
     doc.addImage(LOGO_DATA_URI, 'PNG', margin, 14, logoW, logoH);
     doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
     doc.text('Crane Service Report', margin+logoW+16, 38);
+    if(state.reportNo){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(245,184,0); doc.text('Report No: '+state.reportNo + (state.nextdue ? '     Next due: '+formatDateUK(state.nextdue) : ''), margin+logoW+16, 54); }
+    else if(state.nextdue){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(245,184,0); doc.text('Next due: '+formatDateUK(state.nextdue), margin+logoW+16, 54); }
   }catch(e){
     doc.setTextColor(245,184,0); doc.setFont('helvetica','bold'); doc.setFontSize(9);
     doc.text('KEY ENGINEERING (CHESTERFIELD) LTD', margin, 24);
@@ -1670,7 +2372,6 @@ async function buildPdfBlob(){
   // info grid (two columns)
   const colW = (pageW - margin*2)/2;
   const infoLeft = [
-    ['Report No.', state.reportNo||'—'],
     ['Customer', state.customer||'—'],
     ['Manufacturer', state.manufacturer||'—'],
     ['Identification No.', state.idno||'—'],
@@ -1712,12 +2413,14 @@ async function buildPdfBlob(){
     doc.text(g.group.toUpperCase(), margin, y); y += 10;
     g.items.forEach(label=>{
       const id = slug(g.group)+'__'+slug(label);
-      const it = state.items[id];
+      const it = state.items[id] || {status:null, note:'', photo:null};
       const c = it.status ? statusColor(it.status) : [220,224,228];
       let noteText = (it.note||'').trim();
       if(it.photo) noteText += (noteText ? ' ' : '') + '[photo attached]';
       const noteLines = noteText ? doc.splitTextToSize(noteText, findingColW) : [];
-      const rowHeight = rowH * Math.max(1, noteLines.length);
+      const workText = (it.work||'').trim() ? 'Work done: '+String(it.work).trim() : '';
+      const workLines = workText ? doc.splitTextToSize(workText, findingColW) : [];
+      const rowHeight = rowH * Math.max(1, noteLines.length + workLines.length);
       if(y + rowHeight > bottomLimit){ newPage(doc); y = margin; }
 
       doc.setFont('helvetica','normal'); doc.setFontSize(7.6); doc.setTextColor(65,70,77);
@@ -1728,6 +2431,10 @@ async function buildPdfBlob(){
       if(noteLines.length){
         doc.setFont('helvetica','italic'); doc.setTextColor(90,95,102);
         noteLines.forEach((line,i)=>{ doc.text(line, findingColX, y + i*rowH); });
+      }
+      if(workLines.length){
+        doc.setFont('helvetica','bolditalic'); doc.setFontSize(7); doc.setTextColor(28,120,60);
+        workLines.forEach((line,i)=>{ doc.text(line, findingColX, y + (noteLines.length+i)*rowH); });
       }
       y += rowHeight;
     });
@@ -1775,30 +2482,22 @@ async function buildPdfBlob(){
 function reportFilename(){
   const cust = (state.customer||'report').replace(/[^a-z0-9]+/gi,'_');
   const craneNo = (state.number||'').trim().replace(/[^a-z0-9]+/gi,'_');
-  return `${state.reportNo ? state.reportNo+'_' : ''}${cust}${craneNo?'_'+craneNo:''}_${state.visitType}_${state.date}.pdf`;
+  return `${cust}${craneNo?'_'+craneNo:''}_${state.visitType}_${state.date}.pdf`;
 }
 
 document.getElementById('btnPdf').addEventListener('click', async ()=>{
-  const btn = document.getElementById('btnPdf'); btn.disabled=true; btn.textContent='Building PDF…';
+  const btn = document.getElementById('btnPdf');
+  btn.disabled = true; btn.textContent = 'Building PDF…';
   try{
-    if(!state.customer) throw new Error('Add a customer before exporting the report.');
-    if(!state._reportId || !state.reportNo){ const ok=await saveReport(); if(!ok) throw new Error('The report could not be saved, so the PDF was not exported.'); }
-    const pdf = state.visitType==='LOLER' ? await buildLolerPdfBlob() : await buildPdfBlob();
-    const blob=pdf.output('blob'), filename=state.visitType==='LOLER'?lolerFilename():reportFilename(), file=new File([blob],filename,{type:'application/pdf'});
-    if(navigator.canShare && navigator.canShare({files:[file]})){ try{ await navigator.share({files:[file],title:filename}); setStatusMsg('PDF ready — shared successfully.','ok'); return; }catch(e){ if(e.name==='AbortError') return; } }
-    const url=URL.createObjectURL(blob), w=window.open(url,'_blank');
-    if(!w){ const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); }
-    setTimeout(()=>URL.revokeObjectURL(url),10000); setStatusMsg('PDF opened — use Share/Save from the PDF viewer.','ok');
-  }catch(e){ setStatusMsg('Could not export PDF: '+(e.message||e),'err'); }
-  finally{ btn.disabled=false; btn.textContent='📄 Download PDF'; }
-});
-
-document.getElementById('btnExportReport').addEventListener('click', async ()=>{
-  try{
-    if(!state.customer){ setStatusMsg('Open or fill in a report first.','err'); return; }
-    if(!state._reportId || !state.reportNo){ const ok=await saveReport(); if(!ok) return; }
-    await exportReportFile([{id:state._reportId,r:state,src:'local'}], state.reportNo || 'Key_Engineering_Report');
-  }catch(e){ setStatusMsg('Could not export report: '+(e.message||e),'err'); }
+    await assignReportNo();
+    const pdf = await buildPdfBlob();
+    pdf.save(reportFilename());
+    setStatusMsg('PDF downloaded.', 'ok');
+  }catch(e){
+    setStatusMsg('Could not build PDF: '+e.message, 'err');
+  }finally{
+    btn.disabled = false; btn.textContent = '📄 Download PDF';
+  }
 });
 
 // ---------- LOLER 1998 thorough examination report ----------
@@ -1815,7 +2514,7 @@ function lolerFilename(){
   const cust = (state.customer||'report').replace(/[^a-z0-9]+/gi,'_');
   const craneNo = (state.number||'').trim().replace(/[^a-z0-9]+/gi,'_');
   const equip = equipmentTypeLabel(state.loler.equipmentType).replace(/[^a-z0-9]+/gi,'_');
-  return `${state.reportNo ? state.reportNo+'_' : ''}${cust}${craneNo?'_'+craneNo:''}_LOLER_${equip}_${state.date}.pdf`;
+  return `${cust}${craneNo?'_'+craneNo:''}_LOLER_${equip}_${state.date}.pdf`;
 }
 
 async function buildLolerPdfBlob(){
@@ -1857,6 +2556,7 @@ async function buildLolerPdfBlob(){
   ty += 2;
   doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(BRAND_BLUE[0],BRAND_BLUE[1],BRAND_BLUE[2]);
   doc.text('EQUIPMENT TYPE: '+equipmentTypeLabel(state.loler.equipmentType).toUpperCase(), titleX, ty);
+  if(state.reportNo){ ty += 12; doc.text('REPORT NO: '+state.reportNo, titleX, ty); }
   // the accent bar sits below whichever is taller — the logo or the title
   // text (which wraps to a different number of lines depending on content) —
   // using only the logo's height here was the bug: on longer wraps the text
@@ -1997,6 +2697,7 @@ document.getElementById('btnLoler').addEventListener('click', async ()=>{
   const btn = document.getElementById('btnLoler');
   btn.disabled = true; btn.textContent = 'Building LOLER report…';
   try{
+    await assignReportNo();
     const pdf = await buildLolerPdfBlob();
     pdf.save(lolerFilename());
     setStatusMsg(state.loler.signature ? 'LOLER report downloaded.' : 'LOLER report downloaded — note it has no signature yet, sign in the box above before sending it out.', 'ok');
@@ -2012,7 +2713,7 @@ function findingsSummaryText(){
   const findings = Object.values(state.items).filter(i => i.status==='URGENT' || i.status==='ATTN' || i.status==='MONITOR');
   if(findings.length===0) return 'No urgent repairs, attention items, or monitor flags were noted during this visit.';
   const labelFor = k => k==='URGENT' ? 'URGENT REPAIR' : k==='ATTN' ? "REQ'S ATTENTION" : 'MONITOR';
-  return findings.map(f=>`- [${labelFor(f.status)}] ${f.group} – ${f.label}${f.note?': '+f.note:''}`).join('\n');
+  return findings.map(f=>`- [${labelFor(f.status)}] ${f.group} – ${f.label}${f.note?': '+f.note:''}${f.work && String(f.work).trim() ? ' (Work carried out: '+f.work+')' : ''}`).join('\n');
 }
 
 // ---------- Email customer (opens the default mail app, pre-filled) ----------
@@ -2029,6 +2730,7 @@ function reportPlainText(full){
       })();
   return [
     `Crane Service Report`,
+    `Report no: ${state.reportNo||'—'}`,
     `Customer: ${state.customer||'—'}`,
     `Crane / ID No: ${state.idno || 'n/a'} (${state.manufacturer||'n/a'})`,
     `Type of visit: ${state.visitType}`,
@@ -2048,7 +2750,8 @@ function reportPlainText(full){
 document.getElementById('btnEmail').addEventListener('click', async ()=>{
   if(!state.email){ setStatusMsg('Add a customer email address first.', 'err'); return; }
   const btn = document.getElementById('btnEmail');
-  const subject = `Crane Service Report – ${state.customer} – ${state.date}`;
+  await assignReportNo();
+  const subject = `Crane Service Report – ${state.customer} – ${state.date}${state.reportNo ? ' – '+state.reportNo : ''}`;
 
   // Try to actually attach the PDF via the device's native share sheet — this is
   // the only route a website has to hand a real file to the Mail app. It can't
@@ -2063,8 +2766,8 @@ document.getElementById('btnEmail').addEventListener('click', async ()=>{
 
     if(navigator.canShare && navigator.canShare({files:[file]})){
       navigator.clipboard && navigator.clipboard.writeText(state.email).catch(()=>{});
-      await navigator.share({ files:[file], title: subject, text: reportPlainText(false) });
-      setStatusMsg('Choose Mail from the share sheet — the PDF is already attached. Paste '+state.email+' into "To" (already copied for you).', 'ok');
+      setStatusMsg('📋 '+state.email+' is copied — in Mail, tap the "To" box and choose Paste.', 'ok', 30000);
+      await navigator.share({ files:[file], title: subject, text: 'SEND TO: '+state.email+'  (copy it into the "To" box, then delete this line)\n\n' + reportPlainText(false) });
     } else {
       throw new Error('SHARE_UNSUPPORTED');
     }
@@ -2097,29 +2800,30 @@ document.getElementById('btnCopyText').addEventListener('click', async ()=>{
 });
 
 
-// ---------- Save to OneDrive ----------
-// A downloaded HTML file can't silently log into your OneDrive and upload a
-// file — that needs a real sign-in step. On mobile there's no drag-and-drop,
-// so the real flow is: download the PDF to your phone, then upload it from
-// inside the OneDrive app itself.
+// ---------- Save PDF to the team cloud ----------
+// Files the PDF under  Customer ▸ Service / Inspection / LOLER  in the shared cloud storage.
+// Signed out (or no signal) it simply downloads the PDF to this device instead.
 document.getElementById('btnOnedrive').addEventListener('click', async ()=>{
   const btn = document.getElementById('btnOnedrive');
   btn.disabled = true; btn.textContent = 'Preparing…';
   try{
-    const pdf = await buildPdfBlob();
+    await assignReportNo();
+    const isL = state.visitType === 'LOLER';
+    const pdf = isL ? await buildLolerPdfBlob() : await buildPdfBlob();
+    const fname = isL ? lolerFilename() : reportFilename();
     let uploaded = false;
     if(syncReady()){
-      try{ await syncUploadPdf(pdf, reportFilename()); uploaded = true; setStatusMsg('PDF uploaded to the shared OneDrive folder.', 'ok'); }
-      catch(e){ setStatusMsg('Could not reach OneDrive ('+e.message+') — the PDF is being saved to your phone instead.', 'err'); }
+      try{ const path = await syncUploadPdf(pdf, fname, state); uploaded = true; setStatusMsg('PDF filed in the team cloud: '+decodeURIComponent(path.split('/').slice(0,2).join(' ▸ '))+'.', 'ok', 10000); }
+      catch(e){ setStatusMsg('Could not reach the cloud ('+e.message+') — the PDF is being saved to this device instead.', 'err'); }
     }
     if(!uploaded){
-    pdf.save(reportFilename());
-    setStatusMsg('PDF saved to your phone\u2019s Downloads/Files app. Open the OneDrive app → tap + → Upload → pick "'+reportFilename()+'" from Downloads.', 'ok');
+      pdf.save(fname);
+      setStatusMsg(syncReady() ? 'PDF saved to this device\u2019s Downloads.' : 'PDF saved to this device\u2019s Downloads. Sign in under Team Sync to file PDFs in the shared cloud automatically.', 'ok');
     }
   }catch(e){
     setStatusMsg('Could not prepare the PDF: '+e.message, 'err');
   }finally{
-    btn.disabled = false; btn.textContent = '☁️ Save to OneDrive';
+    btn.disabled = false; btn.textContent = '☁️ Save PDF to cloud';
   }
 });
 
@@ -2407,7 +3111,7 @@ function wkExportReport(x){
   const r = x.r || {};
   const loler = r.loler || {};
   return {
-    id:x.id, reportNo:r.reportNo||'', customer:r.customer||'', email:r.email||'', idno:r.idno||'', number:r.number||'',
+    id:x.id, reportNo:r.reportNo||'', nextdue:r.nextdue||'', site:r.site||'', customer:r.customer||'', email:r.email||'', idno:r.idno||'', number:r.number||'',
     manufacturer:r.manufacturer||'', wll:r.wll||'', falls:r.falls||'',
     date:wkReportDate(x), engineer:r.engineer||'', visitType:r.visitType||'Service', notes:r.notes||'',
     loler:{
@@ -2417,21 +3121,9 @@ function wkExportReport(x){
       signname:loler.signname||'', equipmentType:loler.equipmentType||'CRANE', hasSignature:!!loler.signature
     },
     items: wkItems(r).filter(Boolean).map(it=>({
-      status:it.status||null, group:it.group||'', label:it.label||'', note:it.note||'', hasPhoto:!!(it.photo || it.hasPhoto)
+      status:it.status||null, group:it.group||'', label:it.label||'', note:it.note||'', work:it.work||'', hasPhoto:!!(it.photo || it.hasPhoto)
     }))
   };
-}
-
-async function exportReportFile(reports,label){
-  const local=wkDedupe(reports.filter(x=>x&&x.src==='local'));
-  if(!local.length){ wkMsg('There are no saved reports to export.','err'); return; }
-  const payload={app:'crane-report',kind:'weekly-repairs',version:2,exportedAt:new Date().toISOString(),weekStart:'',reports:local.map(wkExportReport)};
-  const fname=(label||'crane_reports')+'_'+new Date().toISOString().slice(0,10)+'.json';
-  const file=new File([JSON.stringify(payload,null,2)],fname,{type:'application/json'});
-  try{ if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:label||'Crane reports'}); wkMsg('Export ready — use the Share sheet to save or send the file.','ok'); return; } }catch(e){ if(e.name==='AbortError') return; }
-  const url=URL.createObjectURL(file),w=window.open(url,'_blank');
-  if(!w){ const a=document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove(); }
-  setTimeout(()=>URL.revokeObjectURL(url),10000); wkMsg('Export file opened — use Share/Save from the browser.','ok');
 }
 
 async function wkExport(){
@@ -2471,8 +3163,9 @@ function wkSanitize(j){
     if(!r || !wkParse(r.date)) return;
     const loler = r.loler || {};
     incoming.push({
-      id: wkClean(r.id,40) || ('imp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)),
-      reportNo: wkClean(r.reportNo,30),
+      id: wkClean(r.id,40) || String(Date.now()),
+      reportNo: wkClean(r.reportNo,40), site: wkClean(r.site,120),
+      nextdue: wkParse(r.nextdue) ? String(r.nextdue).slice(0,10) : '',
       customer: wkClean(r.customer,120), email: wkClean(r.email,120), idno: wkClean(r.idno,60),
       number: wkClean(r.number,60), manufacturer: wkClean(r.manufacturer,60),
       wll: wkClean(r.wll,40), falls: wkClean(r.falls,40),
@@ -2489,7 +3182,7 @@ function wkSanitize(j){
         hasSignature: !!loler.hasSignature
       },
       items: wkArr(r.items).slice(0,300).filter(it=> it && (it.status==null || WK_RANK[it.status]!==undefined || it.status==='SERV' || it.status==='NA')).map(it=>({
-        status: it.status||null, group:wkClean(it.group,60), label:wkClean(it.label,80), note:wkClean(it.note,2000), hasPhoto:!!it.hasPhoto
+        status: it.status||null, group:wkClean(it.group,60), label:wkClean(it.label,80), note:wkClean(it.note,2000), work:wkClean(it.work,2000), hasPhoto:!!it.hasPhoto
       }))
     });
   });
@@ -2505,12 +3198,11 @@ function wkPromoteToLocalReport(rep){
   (rep.items||[]).forEach(it=>{
     if(!it || !it.label) return;
     const id = slug(it.group||'')+'__'+slug(it.label||'');
-    items[id] = {status: it.status||null, note: it.note||'', photo: null, label: it.label||'', group: it.group||''};
+    items[id] = {status: it.status||null, note: it.note||'', work: it.work||'', photo: null, label: it.label||'', group: it.group||''};
   });
   const loler = rep.loler || {};
   const full = {
-    reportNo:rep.reportNo||'', _reportId:'',
-    customer:rep.customer||'', manufacturer:rep.manufacturer||'', idno:rep.idno||'', number:rep.number||'',
+    reportNo:rep.reportNo||'', nextdue:rep.nextdue||'', site:rep.site||'', customer:rep.customer||'', manufacturer:rep.manufacturer||'', idno:rep.idno||'', number:rep.number||'',
     wll:rep.wll||'', falls:rep.falls||'', email:rep.email||'', date:rep.date||'', engineer:rep.engineer||'',
     visitType:rep.visitType||'Service', notes:rep.notes||'',
     loler:{
@@ -2525,7 +3217,7 @@ function wkPromoteToLocalReport(rep){
   storeSet('report_'+reportId, full);
   const idx = wkArr(storeGet('report_index'));
   if(!idx.some(e=>e && e.id===reportId)){
-    idx.push({id:reportId, reportNo:full.reportNo||'', customer:full.customer, idno:full.idno, number:full.number, date:full.date, visitType:full.visitType, engineer:full.engineer});
+    idx.push({id:reportId, customer:full.customer, idno:full.idno, number:full.number, date:full.date, visitType:full.visitType, reportNo:full.reportNo});
     storeSet('report_index', idx);
   }
   return reportId;
@@ -2600,8 +3292,6 @@ document.getElementById('wkPdf').addEventListener('click', async ()=>{
 });
 
 document.getElementById('wkExport').addEventListener('click', wkExport);
-document.getElementById('wkExportAll').addEventListener('click', async ()=>{ try{ await exportReportFile(wkAllReports(),'Key_Engineering_All_Reports'); }catch(e){ wkMsg('Could not export reports: '+(e.message||e),'err'); } });
-document.getElementById('wkExportCurrent').addEventListener('click', async ()=>{ try{ if(!state.customer){ wkMsg('Open or fill in a report first.','err'); return; } if(!state._reportId||!state.reportNo){ const ok=await saveReport(); if(!ok) return; } await exportReportFile([{id:state._reportId,r:state,src:'local'}],state.reportNo||'Key_Engineering_Report'); }catch(e){ wkMsg('Could not export report: '+(e.message||e),'err'); } });
 document.getElementById('wkImportBtn').addEventListener('click', ()=> document.getElementById('wkImportFile').click());
 document.getElementById('wkImportFile').addEventListener('change', async e=>{
   const files = [...e.target.files];
@@ -2627,270 +3317,668 @@ document.getElementById('wkClearImported').addEventListener('click', ()=>{
 wkRender();
 wkImportInfo();
 
-// ---------- OneDrive team sync ----------
-// Every saved report is copied (as a small photo-free file) into "Sync data" inside the shared
-// OneDrive folder, and Sync pulls everyone else's files into the Weekly Repairs List.
-// Nothing here ever redirects to Microsoft on its own — that would wipe a half-finished report —
-// so if sign-in has expired, uploads queue up until you tap "Sign in with Microsoft".
-const SYNC_SCOPES = ['User.Read','Files.ReadWrite.All'];
-const SYNC_DATA_DIR = 'Sync data';
-const SYNC_PDF_DIR = 'Report PDFs';
-const SYNC_WINDOW_DAYS = 60;
-let msalApp = null, syncBusy = false;
+// ---------- Team sync (Supabase) ----------
+// Sign in once; after that every saved report, customer and completed repair is shared with the
+// whole team automatically, and PDFs are filed under Customer ▸ Service/Inspection/LOLER.
+// Everything still works with no signal or while signed out — changes queue up and go when
+// you are back online. Nothing here ever redirects away from a half-finished report.
+const SB = {url: SB_CONFIG.url.replace(/\/+$/,''), key: SB_CONFIG.key};
+let syncBusy = false, syncAgain = false, lastSyncAt = 0;
 
-function syncConfigured(){
-  return !!(MS_CONFIG.clientId.trim() && MS_CONFIG.tenantId.trim() && MS_CONFIG.sharedFolderLink.trim());
-}
-function syncRedirectUri(){ return window.location.origin + window.location.pathname; }
-function syncAccount(){ return msalApp && msalApp.getAllAccounts()[0]; }
-function syncReady(){ return !!(syncConfigured() && msalApp && syncAccount()); }
+function sbEl(id){ return document.getElementById(id); }
 function syncMap(key){ const v = storeGet(key); return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {}; }
+function stableStr(o){ return JSON.stringify(o, Object.keys(o||{}).sort()); }
+function newCloudId(){
+  try{ if(window.crypto && crypto.randomUUID) return crypto.randomUUID(); }catch(e){}
+  return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,10);
+}
 function syncStatus(text, kind){
-  const el = document.getElementById('syncStatusText');
+  const el = sbEl('syncStatusText');
   el.textContent = text;
   el.style.color = kind === 'err' ? 'var(--urgent)' : kind === 'ok' ? 'var(--serv)' : '';
   el.style.fontWeight = kind ? '600' : '';
 }
-function syncDeviceId(){
-  let d = storeGet('sync_device');
-  if(!d){ d = Math.random().toString(36).slice(2,10); try{ storeSet('sync_device', d); }catch(e){} }
-  return d;
+
+// ---- session ----
+function sbSession(){ const s = storeGet('sb_session'); return (s && s.access_token) ? s : null; }
+function sbSetSession(j){
+  if(!j){ storeDelete('sb_session'); storeDelete('sb_profile'); return; }
+  const old = sbSession() || {};
+  const u = j.user || {};
+  try{
+    storeSet('sb_session', {
+      access_token: j.access_token, refresh_token: j.refresh_token || old.refresh_token || '',
+      expires_at: j.expires_at || (Math.floor(Date.now()/1000) + (Number(j.expires_in) || 3600)),
+      email: u.email || old.email || '', uid: u.id || old.uid || ''
+    });
+  }catch(e){}
 }
-function syncHash(str){ let h = 5381; for(let i=0;i<str.length;i++) h = ((h<<5)+h+str.charCodeAt(i))|0; return (h>>>0).toString(36); }
-// same visit -> same file name, so re-saving a report replaces its file instead of piling up copies
-function syncFileName(x){
-  const cust = String(x.r.customer||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,30) || 'customer';
-  return `${wkReportDate(x)}_${cust}_${x.r.visitType||'Service'}_${syncHash(wkKey(x))}.json`;
+function syncReady(){ return !!sbSession(); }
+async function sbToken(){
+  const s = sbSession();
+  if(!s) throw new Error('Not signed in.');
+  if(s.expires_at - 60 > Date.now()/1000) return s.access_token;
+  let res;
+  res = await fetch(SB.url + '/auth/v1/token?grant_type=refresh_token', {method:'POST',
+    headers:{apikey:SB.key, 'Content-Type':'application/json'}, body:JSON.stringify({refresh_token:s.refresh_token})});
+  if(!res.ok){
+    if(res.status >= 400 && res.status < 500){ sbSetSession(null); syncRefreshUi(); }
+    throw new Error('Your sign-in has expired — please sign in again.');
+  }
+  const j = await res.json();
+  sbSetSession(j);
+  return j.access_token;
+}
+async function sbFetch(path, opts){
+  const tok = await sbToken();
+  opts = opts || {};
+  const headers = Object.assign({apikey:SB.key, Authorization:'Bearer '+tok}, opts.headers || {});
+  return fetch(SB.url + path, Object.assign({}, opts, {headers}));
+}
+async function sbFail(res, doing){
+  let m = '';
+  try{ const j = await res.json(); m = j.message || j.msg || j.error_description || j.error || ''; }catch(e){}
+  let why = `${doing} failed (${res.status})`;
+  if(res.status === 401) why = 'The cloud rejected the sign-in — sign out and back in';
+  else if(res.status === 403 || /row-level security/i.test(m)) why = "You don't have permission to do that";
+  else if(res.status === 404 || /schema cache|does not exist/i.test(m)) return new Error("The cloud database isn't set up yet — the setup SQL still needs running in Supabase");
+  return new Error(why + (m ? ' — ' + m : ''));
+}
+async function sbReportNo(){
+  const ctrl = new AbortController(); const t = setTimeout(()=> ctrl.abort(), 6000);
+  try{
+    const res = await sbFetch('/rest/v1/rpc/next_report_no', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}', signal:ctrl.signal});
+    if(!res.ok) return null;
+    const j = await res.json();
+    return (typeof j === 'string' && j) ? j : null;
+  }catch(e){ return null; }
+  finally{ clearTimeout(t); }
+}
+
+// ---- reports: push ----
+function sbRow(x){
+  const r = x.r;
+  return {id:r.cloudId, report_no:r.reportNo||null, customer:r.customer||null, crane_no:r.number||null, id_no:r.idno||null,
+    visit_type:r.visitType||'Service', report_date:wkReportDate(x)||null, engineer:r.engineer||null,
+    next_due:dueIsoFor(r)||null, site:r.site||null, data:wkExportReport({id:r.cloudId, r})};
 }
 function syncEnqueue(x){
-  if(!wkParse(x.r.date) && !Number(x.id)) return;
-  const name = syncFileName(x);
+  if(!x || !x.r || !x.r.cloudId) return;
   const pending = syncMap('sync_pending');
-  pending[name] = JSON.stringify({app:'crane-report', kind:'weekly-repairs', version:1, exportedAt:new Date().toISOString(),
-    weekStart: wkWeekStart(wkReportDate(x)), device: syncDeviceId(), reports:[wkExportReport(x)]});
-  storeSet('sync_pending', pending);
+  pending[x.r.cloudId] = sbRow(x);
+  try{ storeSet('sync_pending', pending); }catch(e){}
 }
 function syncPendingCount(){ return Object.keys(syncMap('sync_pending')).length; }
-
-async function syncToken(){
-  const acct = syncAccount();
-  if(!acct) throw new Error('Not signed in — tap "Sign in with Microsoft".');
-  try{
-    const r = await msalApp.acquireTokenSilent({scopes:SYNC_SCOPES, account:acct});
-    return r.accessToken;
-  }catch(e){
-    throw new Error('Your Microsoft sign-in has expired — tap "Sign in with Microsoft" again.');
-  }
-}
-async function syncGraph(path, opts){
-  const token = await syncToken();
-  const url = path.startsWith('http') ? path : 'https://graph.microsoft.com/v1.0' + path;
-  opts = opts || {};
-  return fetch(url, Object.assign({}, opts, {headers:Object.assign({Authorization:'Bearer '+token}, opts.headers || {})}));
-}
-async function syncFail(res, doing){
-  let detail = '';
-  try{ const j = await res.json(); detail = (j.error && j.error.message) || ''; }catch(e){}
-  let why = `${doing} failed (${res.status})`;
-  if(res.status === 401) why = 'Microsoft rejected the sign-in — sign out and back in';
-  else if(res.status === 403) why = "You don't have permission for that folder — check the shared link allows editing and an admin has approved the app's OneDrive permission";
-  else if(res.status === 404) why = "Couldn't find the shared folder — check the link in MS_CONFIG";
-  return new Error(why + (detail && res.status !== 404 ? ' — ' + detail : ''));
-}
-
-async function syncResolveFolder(){
-  const link = MS_CONFIG.sharedFolderLink.trim();
-  const cached = storeGet('sync_folder');
-  if(cached && cached.link === link && cached.driveId && cached.itemId) return cached;
-  const enc = 'u!' + btoa(unescape(encodeURIComponent(link))).replace(/=+$/,'').replace(/\//g,'_').replace(/\+/g,'-');
-  const res = await syncGraph('/shares/' + enc + '/driveItem?$select=id,name,parentReference,folder',
-    {headers:{Prefer:'redeemSharingLinkIfNecessary'}});
-  if(!res.ok) throw await syncFail(res, 'Opening the shared folder');
-  const j = await res.json();
-  if(!j.folder) throw new Error('That link points to a file, not a folder.');
-  const driveId = j.parentReference && j.parentReference.driveId;
-  if(!driveId) throw new Error("Couldn't work out which drive that folder lives in.");
-  const f = {link, driveId, itemId:j.id};
-  try{ storeSet('sync_folder', f); }catch(e){}
-  return f;
-}
-
-async function syncPut(folder, dir, name, body, type){
-  const path = `/drives/${folder.driveId}/items/${folder.itemId}:/${encodeURIComponent(dir)}/${encodeURIComponent(name)}:/content?@microsoft.graph.conflictBehavior=replace`;
-  const res = await syncGraph(path, {method:'PUT', headers:{'Content-Type':type}, body});
-  if(!res.ok) throw await syncFail(res, 'Upload');
-}
-async function syncUploadPdf(pdf, filename){
-  const folder = await syncResolveFolder();
-  await syncPut(folder, SYNC_PDF_DIR, filename, pdf.output('blob'), 'application/pdf');
-}
-
-// queue every recent report of ours that hasn't gone up yet (first sync, or reports saved while signed out)
+// reports saved on this device before sync existed (or while signed out) get an id and join the queue
 function syncBackfill(){
-  const cutoff = wkIso(new Date(Date.now() - SYNC_WINDOW_DAYS*86400000));
   const uploaded = syncMap('sync_uploaded'), pending = syncMap('sync_pending');
-  wkDedupe(wkAllReports().filter(x=> x.src === 'local' && wkReportDate(x) >= cutoff)).forEach(x=>{
-    const name = syncFileName(x);
-    if(uploaded[name] !== x.id && !pending[name]) syncEnqueue(x);
+  wkDedupe(wkAllReports().filter(x=> x.src === 'local' && String(x.id).indexOf('imp_') !== 0)).forEach(x=>{
+    if(!x.r.cloudId){ x.r.cloudId = newCloudId(); try{ storeSet('report_'+x.id, x.r); }catch(e){ return; } }
+    if(!uploaded[x.r.cloudId] && !pending[x.r.cloudId]) syncEnqueue(x);
   });
 }
-async function syncUpload(folder){
+async function syncUp(){
   const uploaded = syncMap('sync_uploaded'), pending = syncMap('sync_pending');
+  const ids = Object.keys(pending).filter(id=> pending[id] && typeof pending[id] === 'object');
   let n = 0;
-  for(const [name, body] of Object.entries(pending)){
-    await syncPut(folder, SYNC_DATA_DIR, name, body, 'application/json');
-    let id = '';
-    try{ id = String(JSON.parse(body).reports[0].id); }catch(e){}
-    uploaded[name] = id; delete pending[name]; n++;
+  for(let i = 0; i < ids.length; i += 20){
+    const chunk = ids.slice(i, i+20);
+    const res = await sbFetch('/rest/v1/reports?on_conflict=id', {method:'POST',
+      headers:{'Content-Type':'application/json', Prefer:'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(chunk.map(id=> pending[id]))});
+    if(!res.ok) throw await sbFail(res, 'Upload');
+    chunk.forEach(id=>{ uploaded[id] = 1; delete pending[id]; });
+    n += chunk.length;
     storeSet('sync_uploaded', uploaded); storeSet('sync_pending', pending);
   }
   return n;
 }
 
-async function syncList(folder){
-  let url = `/drives/${folder.driveId}/items/${folder.itemId}:/${encodeURIComponent(SYNC_DATA_DIR)}:/children?$select=id,name,lastModifiedDateTime,@microsoft.graph.downloadUrl&$top=200`;
-  const out = [];
-  while(url){
-    const res = await syncGraph(url);
-    if(res.status === 404) return out; // nobody has uploaded anything yet
-    if(!res.ok) throw await syncFail(res, 'Listing the shared folder');
-    const j = await res.json();
-    out.push(...wkArr(j.value));
-    url = j['@odata.nextLink'] || null;
+// ---- reports: pull ----
+async function syncPullReports(){
+  const last = storeGet('sb_last_pull') || '1970-01-01T00:00:00+00:00';
+  const known = new Set(Object.keys(syncMap('sync_uploaded')));
+  wkAllReports().forEach(x=>{ if(x.r && x.r.cloudId) known.add(String(x.r.cloudId)); });
+  wkArr(storeGet('imported_reports')).forEach(r=> known.add(String(r.id||'')));
+  const incoming = []; let maxTs = last, offset = 0;
+  for(;;){
+    const res = await sbFetch(`/rest/v1/reports?select=id,data,updated_at&updated_at=gt.${encodeURIComponent(last)}&order=updated_at.asc,id.asc&limit=500&offset=${offset}`);
+    if(!res.ok) throw await sbFail(res, 'Download');
+    const rows = wkArr(await res.json());
+    rows.forEach(row=>{
+      if(row.updated_at > maxTs) maxTs = row.updated_at;
+      if(known.has(String(row.id)) || !row.data) return;
+      row.data.id = row.id;
+      incoming.push(row.data);
+    });
+    if(rows.length < 500) break;
+    offset += 500;
   }
-  return out;
-}
-async function syncDownload(folder, f){
-  const dl = f['@microsoft.graph.downloadUrl'];
-  if(dl){ try{ const r = await fetch(dl); if(r.ok) return await r.text(); }catch(e){} }
-  const res = await syncGraph(`/drives/${folder.driveId}/items/${f.id}/content`);
-  if(!res.ok) throw await syncFail(res, 'Download');
-  return await res.text();
-}
-async function syncPull(folder){
-  const cutoff = wkIso(new Date(Date.now() - 90*86400000));
-  const uploaded = syncMap('sync_uploaded'), seen = syncMap('sync_seen');
-  const files = (await syncList(folder)).filter(f=>
-    /^\d{4}-\d{2}-\d{2}_.+\.json$/.test(f.name || '') && f.name.slice(0,10) >= cutoff &&
-    !uploaded[f.name] && seen[f.name] !== f.lastModifiedDateTime);
-  const incoming = []; let bad = 0;
-  for(const f of files){
-    try{
-      incoming.push(...wkSanitize(JSON.parse(await syncDownload(folder, f))).incoming);
-      seen[f.name] = f.lastModifiedDateTime;
-    }catch(e){ bad++; }
-  }
-  storeSet('sync_seen', seen);
-  const added = incoming.length ? wkMergeImported(incoming) : 0;
-  return {added, files:files.length, bad};
+  const added = incoming.length ? wkMergeImported(wkSanitize({kind:'weekly-repairs', reports:incoming}).incoming) : 0;
+  storeSet('sb_last_pull', maxTs);
+  return {added};
 }
 
-function syncRefreshUi(){
-  const signIn = document.getElementById('btnMsSignIn'), signOut = document.getElementById('btnMsSignOut');
-  const now = document.getElementById('btnSyncNow'), hint = document.getElementById('syncConfigHint');
-  const info = document.getElementById('syncRedirectInfo');
-  [signIn, signOut, now, info].forEach(el=> el.style.display = 'none');
-  hint.style.display = 'none';
-  if(!syncConfigured()){
-    const missing = [['clientId','Client ID'],['tenantId','Tenant ID'],['sharedFolderLink','shared folder link']]
-      .filter(([k])=> !String(MS_CONFIG[k]||'').trim()).map(x=>x[1]);
-    syncStatus('OneDrive sync is switched off — still missing: ' + missing.join(', ') + '.');
-    hint.style.display = 'block';
-    return;
+// ---- customers (shared list) ----
+async function syncCustomers(){
+  const res = await sbFetch('/rest/v1/customers?select=name_key,data');
+  if(!res.ok) throw await sbFail(res, 'Customer list');
+  const remote = {};
+  wkArr(await res.json()).forEach(r=>{ if(r && r.name_key && r.data) remote[r.name_key] = r.data; });
+  const sent = syncMap('sync_cust_sent');
+  const companies = wkArr(storeGet('companies'));
+  const keyOf = c=> String((c && c.customer) || '').trim().toLowerCase();
+  const up = []; let changed = false;
+  companies.forEach((c, i)=>{
+    const k = keyOf(c); if(!k) return;
+    const js = stableStr(c);
+    if(!remote[k]) up.push({name_key:k, data:c});
+    else if(stableStr(remote[k]) !== js){
+      if(sent[k] === js){ companies[i] = remote[k]; sent[k] = stableStr(remote[k]); changed = true; }  // changed by someone else
+      else up.push({name_key:k, data:c});                                                              // changed here
+    } else sent[k] = js;
+  });
+  Object.keys(remote).forEach(k=>{
+    if(!companies.some(c=> keyOf(c) === k)){ companies.push(remote[k]); sent[k] = stableStr(remote[k]); changed = true; }
+  });
+  if(up.length){
+    const r2 = await sbFetch('/rest/v1/customers?on_conflict=name_key', {method:'POST',
+      headers:{'Content-Type':'application/json', Prefer:'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify(up)});
+    if(!r2.ok) throw await sbFail(r2, 'Customer upload');
+    up.forEach(u=> sent[u.name_key] = stableStr(u.data));
   }
-  if(!msalApp){ return; } // syncInit is still starting up, or reported why it can't
+  if(changed){ storeSet('companies', companies); companiesCache = await refreshCompanySelect(); }
+  storeSet('sync_cust_sent', sent);
+}
+
+// ---- completed repairs ----
+async function syncCompletions(){
+  const res = await sbFetch('/rest/v1/completions?select=key,done_date,note');
+  if(!res.ok) throw await sbFail(res, 'Completed repairs');
+  const remote = {};
+  wkArr(await res.json()).forEach(r=>{ if(r && r.key) remote[r.key] = {date:r.done_date, note:r.note || ''}; });
+  const local = getCompletions(), sent = syncMap('sync_comp_sent');
+  const S = o=> JSON.stringify({date:o.date, note:o.note || ''});
+  const up = [], del = []; let changed = false;
+  Object.keys(local).forEach(k=>{
+    const l = local[k];
+    if(!remote[k]){
+      if(sent[k]){ delete local[k]; delete sent[k]; changed = true; }   // someone reopened it
+      else up.push(k);
+    } else if(S(remote[k]) !== S(l)){
+      if(sent[k] === S(l)){ local[k] = {date:remote[k].date, note:remote[k].note}; sent[k] = S(remote[k]); changed = true; }
+      else up.push(k);
+    } else sent[k] = S(l);
+  });
+  Object.keys(remote).forEach(k=>{
+    if(!local[k]){
+      if(sent[k]) del.push(k);                                           // reopened here
+      else { local[k] = remote[k]; sent[k] = S(remote[k]); changed = true; }
+    }
+  });
+  if(up.length){
+    const r2 = await sbFetch('/rest/v1/completions?on_conflict=key', {method:'POST',
+      headers:{'Content-Type':'application/json', Prefer:'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(up.map(k=>({key:k, done_date:local[k].date, note:local[k].note || ''})))});
+    if(!r2.ok) throw await sbFail(r2, 'Completed repairs upload');
+    up.forEach(k=> sent[k] = S(local[k]));
+  }
+  if(del.length){
+    const r3 = await sbFetch('/rest/v1/completions?key=in.(' + encodeURIComponent(del.map(k=> '"'+k+'"').join(',')) + ')', {method:'DELETE', headers:{Prefer:'return=minimal'}});
+    if(!r3.ok) throw await sbFail(r3, 'Reopening repairs');
+    del.forEach(k=> delete sent[k]);
+  }
+  if(changed) storeSet('repair_completions', local);
+  storeSet('sync_comp_sent', sent);
+}
+
+// ---- PDFs: Customer ▸ Service / Inspection / LOLER ----
+function sbFolderName(s){ return String(s||'').replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').slice(0,60) || 'Unnamed_customer'; }
+async function syncUploadPdf(pdf, filename, r){
+  r = r || state;
+  const path = [sbFolderName(r.customer), r.visitType || 'Service', filename].map(encodeURIComponent).join('/');
+  const res = await sbFetch('/storage/v1/object/report-pdfs/' + path, {method:'POST', headers:{'Content-Type':'application/pdf', 'x-upsert':'true'}, body:pdf.output('blob')});
+  if(!res.ok) throw await sbFail(res, 'PDF upload');
+  return path;
+}
+
+// ---- UI ----
+function syncRefreshUi(){
+  try{ chatRefreshUi(); }catch(e){}
+  const form = sbEl('sbLoginForm'), inn = sbEl('sbSignedIn');
+  const s = sbSession();
   const pend = syncPendingCount();
   const waiting = pend ? ` ${wkPlural(pend,'report')} waiting to upload.` : '';
-  const acct = syncAccount();
-  if(!acct){
-    signIn.style.display = '';
-    info.style.display = 'block';
-    info.textContent = 'Redirect address to register in the Microsoft app (Single-page application): ' + syncRedirectUri();
-    syncStatus('Not signed in.' + waiting);
+  if(!s){
+    form.style.display = ''; inn.style.display = 'none'; sbEl('sbPwForm').style.display = 'none';
+    if(!sbEl('sbEmail').value) sbEl('sbEmail').value = storeGet('sb_last_email') || '';
+    syncStatus('Not signed in — reports are saved on this device only. Sign in to share them with the team.' + waiting);
     return;
   }
-  now.style.display = ''; signOut.style.display = '';
+  form.style.display = 'none'; inn.style.display = '';
+  const prof = storeGet('sb_profile');
   const last = storeGet('sync_last');
-  syncStatus(`Signed in as ${acct.username || acct.name || 'Microsoft account'}.` +
+  syncStatus(`Signed in as ${s.email || 'your account'}${prof && prof.role === 'admin' ? ' (admin)' : ''}.` +
     (last ? ` Last synced ${new Date(last).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}.` : ' Not synced yet.') + waiting);
 }
-
 async function syncRun(){
-  if(syncBusy || !syncReady()) return;
+  if(!syncReady()) return;
+  if(syncBusy){ syncAgain = true; return; }
   syncBusy = true;
-  const now = document.getElementById('btnSyncNow');
+  const now = sbEl('btnSyncNow');
   now.disabled = true; now.textContent = 'Syncing…';
   try{
     syncStatus('Syncing…');
-    const folder = await syncResolveFolder();
+    try{
+      const pr = await sbFetch('/rest/v1/profiles?select=name,role&id=eq.' + encodeURIComponent(sbSession().uid || ''));
+      if(pr.ok){ const a = wkArr(await pr.json()); if(a[0]) storeSet('sb_profile', a[0]); }
+    }catch(e){}
     syncBackfill();
-    const up = await syncUpload(folder);
-    const down = await syncPull(folder);
-    storeSet('sync_last', new Date().toISOString());
+    const sent = await syncUp();
+    await syncCustomers();
+    const down = await syncPullReports();
+    await syncCompletions();
+    storeSet('sync_last', new Date().toISOString()); lastSyncAt = Date.now();
     wkRender(); wkImportInfo();
+    try{ renderDueDates(); }catch(e){}
+    try{ await refreshHistorySelect(); }catch(e){}
+    try{ renderEqResults(); }catch(e){}
     syncRefreshUi();
-    syncStatus(document.getElementById('syncStatusText').textContent +
-      ` Sent ${up}, received ${down.added} new.` + (down.bad ? ` ${down.bad} file(s) couldn't be read.` : ''), 'ok');
+    syncStatus(sbEl('syncStatusText').textContent + ` Sent ${sent}, received ${down.added} new.`, 'ok');
   }catch(e){
     syncRefreshUi();
-    syncStatus((document.getElementById('syncStatusText').textContent + ' ' + e.message).trim(), 'err');
+    const offline = (e && e.name === 'TypeError');
+    syncStatus((sbEl('syncStatusText').textContent + ' ' + (offline ? "No connection — it will sync when you're back online." : e.message)).trim(), 'err');
   }finally{
     syncBusy = false;
     now.disabled = false; now.textContent = '🔄 Sync now';
+    if(syncAgain){ syncAgain = false; setTimeout(syncRun, 500); }
   }
 }
+function syncKick(){ if(syncReady()) syncRun(); else syncRefreshUi(); }
 
-// called after every successful save: queue the report, then try to send it (never blocks the save)
+// called after every successful save: queue the report, send it, and file its PDF.
+// The PDF is built right now (while this report is still on screen); upload follows.
 function syncAfterSave(x){
-  if(!syncConfigured()) return;
   syncEnqueue(x);
-  if(syncReady()) syncRun(); else if(msalApp) syncRefreshUi();
-}
-
-async function syncInit(){
-  syncRefreshUi();
-  if(!syncConfigured()) return;
-  if(window.location.protocol !== 'https:' && window.location.hostname !== 'localhost'){
-    syncStatus('OneDrive sign-in only works when the app is opened from its https web address — not from a downloaded file.', 'err');
-    return;
-  }
-  if(!window.msal){
-    syncStatus("The Microsoft sign-in library didn't load — check your connection and reload.", 'err');
-    return;
-  }
+  if(!syncReady()){ syncRefreshUi(); return; }
+  let pdfPromise = null, fname = '';
   try{
-    msalApp = new msal.PublicClientApplication({
-      auth:{clientId:MS_CONFIG.clientId.trim(), authority:'https://login.microsoftonline.com/'+MS_CONFIG.tenantId.trim(),
-            redirectUri:syncRedirectUri(), navigateToLoginRequestUrl:false},
-      cache:{cacheLocation:'localStorage'}
+    if(window.jspdf){
+      const isL = x.r.visitType === 'LOLER';
+      fname = isL ? lolerFilename() : reportFilename();
+      pdfPromise = isL ? buildLolerPdfBlob() : buildPdfBlob();
+    }
+  }catch(e){ pdfPromise = null; }
+  syncRun().then(()=>{
+    if(pdfPromise) pdfPromise.then(p=> syncUploadPdf(p, fname, x.r)).catch(e=>{
+      syncStatus((sbEl('syncStatusText').textContent + ' PDF not filed: ' + e.message).trim(), 'err');
     });
-    const r = await msalApp.handleRedirectPromise();
-    if(r && r.account) msalApp.setActiveAccount(r.account);
-  }catch(e){
-    syncRefreshUi();
-    syncStatus('Microsoft sign-in failed: ' + (e.errorMessage || e.message || e), 'err');
-    document.getElementById('syncRedirectInfo').style.display = 'block';
-    document.getElementById('syncRedirectInfo').textContent = 'Redirect address that must be registered in the Microsoft app (Single-page application): ' + syncRedirectUri();
-    return;
-  }
-  syncRefreshUi();
-  if(syncAccount()) syncRun(); // catch up as soon as the app opens
+  });
 }
 
-document.getElementById('btnMsSignIn').addEventListener('click', async ()=>{
-  if(!msalApp) return;
-  if(state.customer && !confirm('Signing in reloads the page, so anything not saved yet in this report will be lost. Save it first, then continue?')) return;
-  try{ await msalApp.loginRedirect({scopes:SYNC_SCOPES, redirectUri:syncRedirectUri()}); }
-  catch(e){ syncStatus('Could not start sign-in: ' + (e.errorMessage || e.message), 'err'); }
+// ---- sign in / out / password ----
+sbEl('btnSbSignIn').addEventListener('click', async ()=>{
+  const email = sbEl('sbEmail').value.trim(), pw = sbEl('sbPassword').value;
+  if(!email || !pw){ syncStatus('Enter your email and password.', 'err'); return; }
+  const b = sbEl('btnSbSignIn'); b.disabled = true;
+  try{
+    const res = await fetch(SB.url + '/auth/v1/token?grant_type=password', {method:'POST', headers:{apikey:SB.key, 'Content-Type':'application/json'}, body:JSON.stringify({email, password:pw})});
+    const j = await res.json().catch(()=>({}));
+    if(!res.ok){
+      const m = j.error_description || j.msg || j.message || '';
+      syncStatus(/invalid/i.test(m) ? "That email or password isn't right." : (m || 'Could not sign in ('+res.status+').'), 'err');
+      return;
+    }
+    sbSetSession(j);
+    try{ storeSet('sb_last_email', email); }catch(e){}
+    sbEl('sbPassword').value = '';
+    syncRefreshUi(); syncRun();
+  }catch(e){ syncStatus('No connection — check your signal and try again.', 'err'); }
+  finally{ b.disabled = false; }
 });
-document.getElementById('btnMsSignOut').addEventListener('click', async ()=>{
-  if(!msalApp) return;
-  try{ await msalApp.logoutRedirect({account:syncAccount(), postLogoutRedirectUri:syncRedirectUri()}); }
-  catch(e){ syncStatus('Could not sign out: ' + (e.errorMessage || e.message), 'err'); }
+sbEl('sbPassword').addEventListener('keydown', e=>{ if(e.key === 'Enter') sbEl('btnSbSignIn').click(); });
+sbEl('btnSbForgot').addEventListener('click', async ()=>{
+  const email = sbEl('sbEmail').value.trim();
+  if(!email){ syncStatus('Type your email address above first, then tap Forgot password.', 'err'); return; }
+  try{
+    const res = await fetch(SB.url + '/auth/v1/recover', {method:'POST', headers:{apikey:SB.key, 'Content-Type':'application/json'}, body:JSON.stringify({email})});
+    syncStatus(res.ok ? 'If that email has an account, a reset link is on its way — open it on this device.' : 'Could not send the reset email ('+res.status+').', res.ok ? 'ok' : 'err');
+  }catch(e){ syncStatus('No connection — check your signal and try again.', 'err'); }
 });
-document.getElementById('btnSyncNow').addEventListener('click', syncRun);
+sbEl('btnMsSignOut').addEventListener('click', async ()=>{
+  try{ await sbFetch('/auth/v1/logout', {method:'POST'}); }catch(e){}
+  sbSetSession(null);
+  syncRefreshUi();
+});
+sbEl('btnSyncNow').addEventListener('click', syncRun);
+sbEl('btnSyncAll').addEventListener('click', e=>{
+  e.preventDefault();
+  try{ storeDelete('sb_last_pull'); }catch(err){}
+  syncRun();
+});
+sbEl('btnSbChangePw').addEventListener('click', ()=>{ sbEl('sbPwForm').style.display = ''; sbEl('sbNewPw').focus(); });
+sbEl('btnSbCancelPw').addEventListener('click', ()=>{ sbEl('sbPwForm').style.display = 'none'; sbEl('sbNewPw').value = ''; });
+sbEl('btnSbSavePw').addEventListener('click', async ()=>{
+  const pw = sbEl('sbNewPw').value;
+  if(pw.length < 8){ syncStatus('Use at least 8 characters for the new password.', 'err'); return; }
+  try{
+    const res = await sbFetch('/auth/v1/user', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw})});
+    if(!res.ok){ const j = await res.json().catch(()=>({})); throw new Error(j.msg || j.message || ('error '+res.status)); }
+    sbEl('sbNewPw').value = ''; sbEl('sbPwForm').style.display = 'none';
+    syncRefreshUi(); syncStatus(sbEl('syncStatusText').textContent + ' Password changed.', 'ok');
+  }catch(e){ syncStatus('Could not change the password: ' + e.message, 'err'); }
+});
 
-syncInit();
+// password-reset link opens the app with the session in the address; pick it up and ask for a new password
+function sbHandleHash(){
+  const h = window.location.hash || '';
+  if(h.indexOf('access_token=') < 0 && h.indexOf('error_description=') < 0) return;
+  const p = new URLSearchParams(h.replace(/^#/, ''));
+  try{ history.replaceState(null, '', window.location.pathname + window.location.search); }catch(e){}
+  if(p.get('error_description')){ syncStatus('That link has expired — tap Forgot password to get a new one.', 'err'); return; }
+  const at = p.get('access_token');
+  let claims = {};
+  try{ claims = JSON.parse(atob(at.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))); }catch(e){}
+  sbSetSession({access_token:at, refresh_token:p.get('refresh_token') || '', expires_in:Number(p.get('expires_in')) || 3600, user:{email:claims.email || '', id:claims.sub || ''}});
+  if(p.get('type') === 'recovery'){ syncRefreshUi(); sbEl('sbPwForm').style.display = ''; syncStatus('Choose a new password below.', 'ok'); }
+}
+
+// keep things fresh: when the app comes back to the front, when signal returns, and every 5 minutes
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && syncReady() && Date.now() - lastSyncAt > 60000) syncRun(); });
+window.addEventListener('online', ()=>{ if(syncReady()) syncRun(); });
+setInterval(()=>{ if(!document.hidden && syncReady()) syncRun(); }, 5*60*1000);
+
+(function syncInit(){
+  // drop anything queued by the earlier OneDrive-style sync (different shape)
+  try{ const pend = syncMap('sync_pending'); let dirty = false; Object.keys(pend).forEach(k=>{ if(!pend[k] || typeof pend[k] !== 'object'){ delete pend[k]; dirty = true; } }); if(dirty) storeSet('sync_pending', pend); }catch(e){}
+  sbHandleHash();
+  syncRefreshUi();
+  if(syncReady()) syncRun();
+})();
+
+
+// ================= ENGINEERS' CHAT =================
+const chat = {open:false, threads:[], cur:null, msgs:[], tick:0, announced:{}, photo:null, photoFor:'', loaded:false, busy:false};
+function chatMe(){ const s = sbSession(); return s ? (s.uid || '') : ''; }
+function chatName(){
+  const p = storeGet('sb_profile'); const s = sbSession() || {};
+  let n = String((p && p.name) || s.email || 'Engineer').split('@')[0];
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+function chatUuid(){
+  try{ if(crypto.randomUUID) return crypto.randomUUID(); }catch(e){}
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{ const r = Math.random()*16|0; return (c==='x' ? r : (r&3|8)).toString(16); });
+}
+function chatSeen(){ const m = storeGet('chat_seen'); return (m && typeof m === 'object') ? m : {}; }
+function chatMarkSeen(id, ts){ if(!id || !ts) return; const m = chatSeen(); if(!m[id] || m[id] < ts){ m[id] = ts; try{ storeSet('chat_seen', m); }catch(e){} } }
+function chatUnread(){
+  const seen = chatSeen(), me = chatMe();
+  return chat.threads.filter(t=> t.last_by !== me && (!seen[t.id] || t.last_at > seen[t.id]));
+}
+function chatSay(text, kind){
+  const el = sbEl('chatMsg'); el.textContent = text || '';
+  el.style.color = kind === 'err' ? 'var(--urgent)' : kind === 'ok' ? 'var(--serv)' : '';
+  el.style.fontWeight = kind ? '600' : '';
+}
+function chatWhen(iso){
+  const d = new Date(iso); if(isNaN(d)) return '';
+  const today = new Date(); const same = d.toDateString() === today.toDateString();
+  return same ? d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})
+              : d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+function chatEl(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+
+function chatRefreshUi(){
+  const btn = sbEl('btnChatToggle'); if(!btn) return;
+  const signed = syncReady();
+  const n = signed ? chatUnread().length : 0;
+  btn.textContent = `💬 ${chat.open ? 'Hide' : 'Open'} Engineers’ Chat` + (n ? ` — ${n} new` : '');
+  btn.style.borderColor = n ? 'var(--urgent)' : ''; btn.style.color = n ? 'var(--urgent)' : '';
+  if(!signed){ chat.threads = []; chat.cur = null; chat.loaded = false; chat.announced = {}; }
+  if(chat.open && !signed) chatSay('Sign in under Team Sync below to use the team chat.');
+  if(chat.open && signed && !chat.loaded && !chat.loading){ chat.loading = true; chatSay(''); chatLoadThreads().catch(e=>{ chatSay(e.name === 'TypeError' ? 'No connection \u2014 try again when you have signal.' : e.message, 'err'); }).finally(()=>{ chat.loading = false; }); }
+  try{ if(n && navigator.setAppBadge) navigator.setAppBadge(((alertSummary && alertSummary.attention) || 0) + n); }catch(e){}
+}
+
+async function chatNotify(list){
+  if(!list.length || !alertWanted()) return;
+  try{
+    const one = list.length === 1 ? list[0] : null;
+    const title = one ? `Chat: ${one.title}` : `Key Engineering chat — ${list.length} topics with new messages`;
+    const body = one ? `${one.last_by_name || 'Someone'}: ${one.last_text || ''}` : list.slice(0,4).map(t=> `${t.title} — ${t.last_by_name || ''}`).join('\n');
+    await navigator.serviceWorker.register('sw.js');
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification(title, {body, tag:'ke-chat', icon:'icon-180.png'});
+  }catch(e){}
+}
+
+async function chatLoadThreads(quiet){
+  if(!syncReady()) return;
+  const res = await sbFetch('/rest/v1/threads?select=*&order=last_at.desc&limit=100');
+  if(!res.ok) throw await sbFail(res, 'Loading chat');
+  chat.threads = wkArr(await res.json());
+  if(!storeGet('chat_seen_init')){            // first ever load on this device: don't flag old topics as new
+    const m = chatSeen(); chat.threads.forEach(t=>{ m[t.id] = t.last_at; }); storeSet('chat_seen', m); storeSet('chat_seen_init', true);
+  }
+  if(chat.cur){ const t = chat.threads.find(x=> x.id === chat.cur.id); if(t) chat.cur = t; }
+  const fresh = chatUnread().filter(t=> chat.announced[t.id] !== t.last_at && !(chat.cur && chat.cur.id === t.id && chat.open && !document.hidden));
+  chatUnread().forEach(t=>{ chat.announced[t.id] = t.last_at; });
+  chat.loaded = true;
+  chatRenderList(); chatRefreshUi();
+  if(fresh.length) chatNotify(fresh);
+}
+
+function chatRenderList(){
+  const box = sbEl('chatList'); box.textContent = '';
+  const seen = chatSeen(), me = chatMe();
+  if(!chat.threads.length){ box.appendChild(chatEl('p','note-inline','No topics yet — tap “New topic” to ask the team something or flag a problem.')); return; }
+  chat.threads.forEach(t=>{
+    const unread = t.last_by !== me && (!seen[t.id] || t.last_at > seen[t.id]);
+    const b = chatEl('button', 'chat-row' + (unread ? ' unread' : '')); b.type = 'button';
+    const top = chatEl('div','ct', t.title);
+    if(unread) top.appendChild(chatEl('span','chat-dot','NEW'));
+    if(t.closed) top.appendChild(chatEl('span','chat-solved','✔ Solved'));
+    b.appendChild(top);
+    b.appendChild(chatEl('div','cs', `${t.last_by_name || ''}: ${t.last_text || ''}`));
+    b.appendChild(chatEl('div','cm', (t.tag ? t.tag + ' · ' : '') + chatWhen(t.last_at)));
+    b.addEventListener('click', ()=> chatOpenThread(t.id));
+    box.appendChild(b);
+  });
+}
+
+const chatPhotoCache = new Map();
+async function chatPhotoUrl(path){
+  if(chatPhotoCache.has(path)) return chatPhotoCache.get(path);
+  const res = await sbFetch('/storage/v1/object/authenticated/chat-photos/' + path.split('/').map(encodeURIComponent).join('/'));
+  if(!res.ok) throw new Error('photo');
+  const url = URL.createObjectURL(await res.blob());
+  chatPhotoCache.set(path, url); return url;
+}
+function chatBubble(m){
+  const me = m.author_id === chatMe();
+  const b = chatEl('div', 'chat-b' + (me ? ' me' : ''));
+  b.dataset.id = m.id;
+  if(!me) b.appendChild(chatEl('span','cn', m.author_name || 'Engineer'));
+  if(m.body) b.appendChild(document.createTextNode(m.body));
+  if(m.photo_path){
+    const img = document.createElement('img'); img.alt = 'photo';
+    img.addEventListener('click', ()=> img.classList.toggle('big'));
+    b.appendChild(img);
+    chatPhotoUrl(m.photo_path).then(u=>{ img.src = u; }).catch(()=>{ img.replaceWith(chatEl('em','', ' (photo couldn’t be loaded)')); });
+  }
+  b.appendChild(chatEl('span','cw', (me ? 'You' : '') + (me ? ' · ' : '') + chatWhen(m.created_at)));
+  return b;
+}
+function chatRenderThread(){
+  const t = chat.cur; if(!t) return;
+  sbEl('chatThreadTitle').textContent = t.title;
+  sbEl('chatThreadTag').textContent = (t.tag ? t.tag + ' · ' : '') + 'Started by ' + (t.created_by_name || 'someone') + (t.closed ? ' · ✔ Solved' : '');
+  sbEl('btnChatSolved').textContent = t.closed ? '↩ Re-open' : '✔ Mark solved';
+  const prof = storeGet('sb_profile');
+  sbEl('btnChatDelete').style.display = ((prof && prof.role === 'admin') || t.created_by === chatMe()) ? '' : 'none';
+}
+async function chatPullMsgs(full){
+  const t = chat.cur; if(!t || !syncReady()) return;
+  const last = (!full && chat.msgs.length) ? chat.msgs[chat.msgs.length-1].created_at : '';
+  let q = '/rest/v1/messages?select=*&thread_id=eq.' + encodeURIComponent(t.id) + '&order=created_at.asc&limit=500';
+  if(last) q += '&created_at=gt.' + encodeURIComponent(last);
+  const res = await sbFetch(q);
+  if(!res.ok) throw await sbFail(res, 'Loading messages');
+  const rows = wkArr(await res.json());
+  if(chat.cur !== t && (!chat.cur || chat.cur.id !== t.id)) return;
+  const box = sbEl('chatMsgs');
+  const atBottom = full || (box.scrollHeight - box.scrollTop - box.clientHeight < 80);
+  if(full){ chat.msgs = []; box.textContent = ''; }
+  let added = 0;
+  rows.forEach(m=>{
+    if(chat.msgs.some(x=> x.id === m.id)) return;
+    chat.msgs.push(m); box.appendChild(chatBubble(m)); added++;
+  });
+  if(full && !chat.msgs.length) box.appendChild(chatEl('p','note-inline','No messages yet.'));
+  if(added && atBottom) box.scrollTop = box.scrollHeight;
+  const latest = chat.msgs.length ? chat.msgs[chat.msgs.length-1].created_at : '';
+  if(latest) chatMarkSeen(t.id, latest);
+  if(added && !full) chatRefreshUi();
+}
+async function chatOpenThread(id){
+  const t = chat.threads.find(x=> x.id === id); if(!t) return;
+  chat.cur = t; chat.msgs = [];
+  sbEl('chatListView').style.display = 'none'; sbEl('chatThreadView').style.display = '';
+  sbEl('chatMsgs').textContent = ''; sbEl('chatReply').value = ''; chatClearPhoto();
+  chatRenderThread();
+  try{ chatSay(''); await chatPullMsgs(true); chatMarkSeen(t.id, t.last_at); chatRefreshUi(); }
+  catch(e){ chatSay(e.name === 'TypeError' ? 'No connection — try again when you have signal.' : e.message, 'err'); }
+}
+function chatBackToList(){
+  chat.cur = null; chat.msgs = [];
+  sbEl('chatThreadView').style.display = 'none'; sbEl('chatListView').style.display = '';
+  chatRenderList(); chatRefreshUi();
+  chatLoadThreads().catch(()=>{});
+}
+
+// ---- photos (shrunk before upload so they're quick on 4G) ----
+function chatShrink(file){
+  return new Promise((resolve, reject)=>{
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onload = ()=>{
+      const max = 1280; let w = img.naturalWidth, h = img.naturalHeight;
+      const k = Math.min(1, max / Math.max(w, h)); w = Math.round(w*k); h = Math.round(h*k);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      c.toBlob(b=> b ? resolve(b) : reject(new Error('Could not read that photo')), 'image/jpeg', 0.75);
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error('Could not read that photo')); };
+    img.src = url;
+  });
+}
+function chatClearPhoto(){ chat.photo = null; sbEl('chatPhotoName').textContent = ''; sbEl('chatNewPhotoName').textContent = ''; sbEl('chatFile').value = ''; }
+async function chatUploadPhoto(threadId){
+  if(!chat.photo) return null;
+  const path = threadId + '/' + chatUuid() + '.jpg';
+  const res = await sbFetch('/storage/v1/object/chat-photos/' + path, {method:'POST', headers:{'Content-Type':'image/jpeg','x-upsert':'true'}, body:chat.photo});
+  if(!res.ok) throw await sbFail(res, 'Uploading the photo');
+  return path;
+}
+
+async function chatPostMessage(threadId, body, photoPath){
+  const row = {id: chatUuid(), thread_id: threadId, body: body || null, photo_path: photoPath || null, author_name: chatName()};
+  const res = await sbFetch('/rest/v1/messages', {method:'POST', headers:{'Content-Type':'application/json', Prefer:'return=minimal'}, body:JSON.stringify(row)});
+  if(!res.ok && res.status !== 409) throw await sbFail(res, 'Sending');
+}
+async function chatSend(){
+  const body = sbEl('chatReply').value.trim();
+  if(!body && !chat.photo){ chatSay('Type a message or add a photo first.', 'err'); return; }
+  if(chat.busy || !chat.cur) return; chat.busy = true;
+  const btn = sbEl('btnChatSend'); btn.disabled = true; btn.textContent = 'Sending…';
+  try{
+    const pp = await chatUploadPhoto(chat.cur.id);
+    await chatPostMessage(chat.cur.id, body, pp);
+    sbEl('chatReply').value = ''; chatClearPhoto(); chatSay('');
+    await chatPullMsgs(false);
+    const box = sbEl('chatMsgs'); box.scrollTop = box.scrollHeight;
+    chatLoadThreads().catch(()=>{});
+  }catch(e){ chatSay(e.name === 'TypeError' ? 'No connection — your message is still here, tap Send again when you have signal.' : e.message, 'err'); }
+  finally{ chat.busy = false; btn.disabled = false; btn.textContent = 'Send'; }
+}
+async function chatPostNew(){
+  const title = sbEl('chatNewTitle').value.trim(), body = sbEl('chatNewBody').value.trim(), tag = sbEl('chatNewTag').value.trim();
+  if(!title){ chatSay('Give the topic a short title.', 'err'); return; }
+  if(!body && !chat.photo){ chatSay('Add some details or a photo.', 'err'); return; }
+  if(chat.busy) return; chat.busy = true;
+  const btn = sbEl('btnChatPost'); btn.disabled = true; btn.textContent = 'Posting…';
+  try{
+    const id = chatUuid();
+    let res = await sbFetch('/rest/v1/threads', {method:'POST', headers:{'Content-Type':'application/json', Prefer:'return=minimal'},
+      body:JSON.stringify({id, title, tag: tag || null, created_by_name: chatName(), last_by_name: chatName(), last_text: body || '📷 Photo'})});
+    if(!res.ok && res.status !== 409) throw await sbFail(res, 'Posting');
+    const pp = await chatUploadPhoto(id);
+    await chatPostMessage(id, body, pp);
+    ['chatNewTitle','chatNewBody','chatNewTag'].forEach(k=> sbEl(k).value = ''); chatClearPhoto();
+    sbEl('chatNewForm').style.display = 'none'; chatSay('Posted — the team will see it.', 'ok');
+    await chatLoadThreads();
+    chatOpenThread(id);
+  }catch(e){ chatSay(e.name === 'TypeError' ? 'No connection — nothing was posted, try again when you have signal.' : e.message, 'err'); }
+  finally{ chat.busy = false; btn.disabled = false; btn.textContent = 'Post to team'; }
+}
+
+// ---- buttons ----
+sbEl('btnChatToggle').addEventListener('click', async ()=>{
+  chat.open = !chat.open;
+  sbEl('chatBody').style.display = chat.open ? '' : 'none';
+  chatRefreshUi();
+  if(!chat.open) return;
+  if(!syncReady()){ chatSay('Sign in under Team Sync below to use the team chat.'); return; }
+  chatSay(chat.loaded ? '' : 'Loading…');
+  try{ await chatLoadThreads(); chatSay(''); }
+  catch(e){ chatSay(e.name === 'TypeError' ? "No connection — try again when you have signal." : e.message, 'err'); }
+});
+sbEl('btnChatRefresh').addEventListener('click', async ()=>{ try{ await chatLoadThreads(); chatSay('Up to date.', 'ok'); }catch(e){ chatSay(e.name === 'TypeError' ? 'No connection.' : e.message, 'err'); } });
+sbEl('btnChatNew').addEventListener('click', ()=>{ const f = sbEl('chatNewForm'); f.style.display = f.style.display === 'none' ? '' : 'none'; });
+sbEl('btnChatNewCancel').addEventListener('click', ()=>{ sbEl('chatNewForm').style.display = 'none'; chatClearPhoto(); });
+sbEl('btnChatPost').addEventListener('click', chatPostNew);
+sbEl('btnChatSend').addEventListener('click', chatSend);
+sbEl('btnChatBack').addEventListener('click', chatBackToList);
+sbEl('btnChatPhoto').addEventListener('click', ()=>{ chat.photoFor = 'reply'; sbEl('chatFile').click(); });
+sbEl('btnChatNewPhoto').addEventListener('click', ()=>{ chat.photoFor = 'new'; sbEl('chatFile').click(); });
+sbEl('chatFile').addEventListener('change', async e=>{
+  const f = e.target.files && e.target.files[0]; if(!f) return;
+  try{
+    chat.photo = await chatShrink(f);
+    const label = '📷 Photo ready (' + Math.round(chat.photo.size/1024) + ' KB)';
+    sbEl(chat.photoFor === 'new' ? 'chatNewPhotoName' : 'chatPhotoName').textContent = label;
+  }catch(err){ chatSay(err.message, 'err'); }
+});
+sbEl('btnChatSolved').addEventListener('click', async ()=>{
+  const t = chat.cur; if(!t) return;
+  try{
+    const res = await sbFetch('/rest/v1/threads?id=eq.' + encodeURIComponent(t.id), {method:'PATCH', headers:{'Content-Type':'application/json', Prefer:'return=minimal'}, body:JSON.stringify({closed: !t.closed})});
+    if(!res.ok) throw await sbFail(res, 'Updating');
+    t.closed = !t.closed; chatRenderThread(); chatSay(t.closed ? 'Marked as solved.' : 'Re-opened.', 'ok');
+  }catch(e){ chatSay(e.name === 'TypeError' ? 'No connection.' : e.message, 'err'); }
+});
+sbEl('btnChatDelete').addEventListener('click', async ()=>{
+  const t = chat.cur; if(!t) return;
+  if(!window.confirm('Delete this whole topic and all its messages for everyone?')) return;
+  try{
+    const res = await sbFetch('/rest/v1/threads?id=eq.' + encodeURIComponent(t.id), {method:'DELETE', headers:{Prefer:'return=minimal'}});
+    if(!res.ok) throw await sbFail(res, 'Deleting');
+    chat.threads = chat.threads.filter(x=> x.id !== t.id); chatBackToList(); chatSay('Topic deleted.', 'ok');
+  }catch(e){ chatSay(e.name === 'TypeError' ? 'No connection.' : e.message, 'err'); }
+});
+
+// polling: open conversation every 8s, topic list / badge every ~32s, and whenever the app comes to the front
+setInterval(()=>{
+  if(document.hidden || !syncReady()) return;
+  chat.tick++;
+  if(chat.open && chat.cur) chatPullMsgs(false).catch(()=>{});
+  if(chat.tick % 4 === 0) chatLoadThreads().catch(()=>{});
+}, 8000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && syncReady()){ chatLoadThreads().catch(()=>{}); if(chat.open && chat.cur) chatPullMsgs(false).catch(()=>{}); } });
+window.addEventListener('online', ()=>{ if(syncReady()) chatLoadThreads().catch(()=>{}); });
+if(syncReady()) chatLoadThreads().catch(()=>{});
+chatRefreshUi();
 
 updateTopbarSub();
 })();
