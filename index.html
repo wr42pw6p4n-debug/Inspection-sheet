@@ -366,6 +366,13 @@
     <div class="section-body">
       <button class="btn-ghost" id="btnChatToggle" type="button" style="width:100%;">💬 Open Engineers' Chat</button>
       <div id="chatBody" style="display:none; margin-top:12px;">
+        <div id="chatWho" style="margin-bottom:10px;">
+          <p class="note-inline" style="margin:0;">Chatting as <b id="chatWhoName"></b> <a href="#" id="chatWhoChange">change</a></p>
+          <div id="chatWhoPick" style="display:none;">
+            <p class="note-inline" style="margin:0 0 6px; font-weight:600;" id="chatWhoAsk">Who's using this device?</p>
+            <div id="chatWhoBtns" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+          </div>
+        </div>
         <p class="note-inline" id="chatMsg" style="margin-top:0;"></p>
         <div id="chatListView">
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
@@ -3701,10 +3708,46 @@ setInterval(()=>{ if(!document.hidden && syncReady()) syncRun(); }, 5*60*1000);
 // ================= ENGINEERS' CHAT =================
 const chat = {open:false, threads:[], cur:null, msgs:[], tick:0, announced:{}, photo:null, photoFor:'', loaded:false, busy:false};
 function chatMe(){ const s = sbSession(); return s ? (s.uid || '') : ''; }
+const CHAT_TEAM = ['Dave','Rob','Jordan','Ashleigh','John','Ricky','Martyn','Maxine'];
+function chatTeam(){
+  const extra = storeGet('chat_names_extra');
+  return CHAT_TEAM.concat(Array.isArray(extra) ? extra.filter(n=> CHAT_TEAM.indexOf(n) < 0) : []);
+}
 function chatName(){
+  const who = storeGet('chat_who');
+  if(typeof who === 'string' && who) return who;
+  // a personal login (rob@..., dave@...) names itself; the shared login doesn't
   const p = storeGet('sb_profile'); const s = sbSession() || {};
-  let n = String((p && p.name) || s.email || 'Engineer').split('@')[0];
-  return n.charAt(0).toUpperCase() + n.slice(1);
+  const first = String((p && p.name) || s.email || '').split('@')[0].split(/[.\-_+]/)[0].toLowerCase();
+  const hit = chatTeam().find(n=> n.toLowerCase() === first);
+  return hit || '';
+}
+function chatWhoRender(forceOpen){
+  if(!sbEl('chatWho')) return;
+  const name = chatName();
+  sbEl('chatWhoName').textContent = name || '(pick your name)';
+  const pick = sbEl('chatWhoPick');
+  pick.style.display = (!name || forceOpen) ? '' : 'none';
+  sbEl('chatWhoChange').style.display = name ? '' : 'none';
+  if(pick.style.display === 'none') return;
+  const box = sbEl('chatWhoBtns'); box.textContent = '';
+  chatTeam().forEach(n=>{
+    const b = chatEl('button','btn-ghost', n); b.type = 'button';
+    if(n === name) b.style.background = 'var(--steel-100)';
+    b.addEventListener('click', ()=>{ try{ storeSet('chat_who', n); }catch(e){} chatWhoRender(false); chatSay(''); chatRefreshUi(); });
+    box.appendChild(b);
+  });
+  const other = chatEl('button','btn-ghost','+ Someone else'); other.type = 'button';
+  other.addEventListener('click', ()=>{
+    const v = (window.prompt('Type the name to show in the chat:') || '').trim().slice(0, 30);
+    if(!v) return;
+    const nm = v.charAt(0).toUpperCase() + v.slice(1);
+    const extra = storeGet('chat_names_extra'); const arr = Array.isArray(extra) ? extra : [];
+    if(chatTeam().indexOf(nm) < 0){ arr.push(nm); try{ storeSet('chat_names_extra', arr); }catch(e){} }
+    try{ storeSet('chat_who', nm); }catch(e){}
+    chatWhoRender(false); chatSay(''); chatRefreshUi();
+  });
+  box.appendChild(other);
 }
 function chatUuid(){
   try{ if(crypto.randomUUID) return crypto.randomUUID(); }catch(e){}
@@ -3735,7 +3778,8 @@ function chatRefreshUi(){
   const n = signed ? chatUnread().length : 0;
   btn.textContent = `💬 ${chat.open ? 'Hide' : 'Open'} Engineers’ Chat` + (n ? ` — ${n} new` : '');
   btn.style.borderColor = n ? 'var(--urgent)' : ''; btn.style.color = n ? 'var(--urgent)' : '';
-  if(!signed){ chat.threads = []; chat.cur = null; chat.loaded = false; chat.announced = {}; }
+  if(!signed){ chat.threads = []; chat.cur = null; chat.loaded = false; chat.announced = {}; try{ storeDelete('chat_who'); }catch(e){} }
+  try{ chatWhoRender(false); }catch(e){}
   if(chat.open && !signed) chatSay('Sign in under Team Sync below to use the team chat.');
   if(chat.open && signed && !chat.loaded && !chat.loading){ chat.loading = true; chatSay(''); chatLoadThreads().catch(e=>{ chatSay(e.name === 'TypeError' ? 'No connection \u2014 try again when you have signal.' : e.message, 'err'); }).finally(()=>{ chat.loading = false; }); }
   try{ if(n && navigator.setAppBadge) navigator.setAppBadge(((alertSummary && alertSummary.attention) || 0) + n); }catch(e){}
@@ -3888,6 +3932,7 @@ async function chatPostMessage(threadId, body, photoPath){
   if(!res.ok && res.status !== 409) throw await sbFail(res, 'Sending');
 }
 async function chatSend(){
+  if(!chatName()){ chatWhoRender(true); chatSay('Pick your name at the top first, so the team knows who wrote it.', 'err'); return; }
   const body = sbEl('chatReply').value.trim();
   if(!body && !chat.photo){ chatSay('Type a message or add a photo first.', 'err'); return; }
   if(chat.busy || !chat.cur) return; chat.busy = true;
@@ -3903,6 +3948,7 @@ async function chatSend(){
   finally{ chat.busy = false; btn.disabled = false; btn.textContent = 'Send'; }
 }
 async function chatPostNew(){
+  if(!chatName()){ chatWhoRender(true); chatSay('Pick your name at the top first, so the team knows who wrote it.', 'err'); return; }
   const title = sbEl('chatNewTitle').value.trim(), body = sbEl('chatNewBody').value.trim(), tag = sbEl('chatNewTag').value.trim();
   if(!title){ chatSay('Give the topic a short title.', 'err'); return; }
   if(!body && !chat.photo){ chatSay('Add some details or a photo.', 'err'); return; }
@@ -3934,6 +3980,7 @@ sbEl('btnChatToggle').addEventListener('click', async ()=>{
   try{ await chatLoadThreads(); chatSay(''); }
   catch(e){ chatSay(e.name === 'TypeError' ? "No connection — try again when you have signal." : e.message, 'err'); }
 });
+sbEl('chatWhoChange').addEventListener('click', e=>{ e.preventDefault(); chatWhoRender(true); });
 sbEl('btnChatRefresh').addEventListener('click', async ()=>{ try{ await chatLoadThreads(); chatSay('Up to date.', 'ok'); }catch(e){ chatSay(e.name === 'TypeError' ? 'No connection.' : e.message, 'err'); } });
 sbEl('btnChatNew').addEventListener('click', ()=>{ const f = sbEl('chatNewForm'); f.style.display = f.style.display === 'none' ? '' : 'none'; });
 sbEl('btnChatNewCancel').addEventListener('click', ()=>{ sbEl('chatNewForm').style.display = 'none'; chatClearPhoto(); });
