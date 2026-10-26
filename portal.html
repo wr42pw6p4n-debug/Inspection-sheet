@@ -193,6 +193,10 @@ function getPdf(r, btn){
   .then(function(){ btn.disabled = false; btn.textContent = old; bump(); });
 }
 
+try{                                   // links from emails arrive with ?c=Company+name already filled in
+  var pre = new URLSearchParams(window.location.search).get('c');
+  if(pre){ $('co').value = pre.slice(0, 100); setTimeout(function(){ $('pin').focus(); }, 50); }
+}catch(e){}
 $('go').addEventListener('click', login);
 $('pin').addEventListener('keydown', function(e){ if(e.key === 'Enter') login(); });
 $('co').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('pin').focus(); });
